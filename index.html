@@ -499,6 +499,9 @@ function examHeadlineHtml(ex){
   if(f.hi) return esc(ex.nameHi);
   return esc(ex.nameEn);
 }
+function examTypeChip(ex){
+  return ex.examType ? ` <span class="chip">${esc(ex.examType)}</span>` : '';
+}
 
 /* ============ RENDER ROOT ============ */
 const SECURE_SCREENS = ['guard-exam-run','guard-review'];
@@ -803,7 +806,7 @@ function screenGuardMonth(){
     const dropped = ex.createdAt ? `Dropped on ${fmtDateTime(ex.createdAt).date}` : '';
     return `<div class="tile" data-exam="${ex.id}">
       <div class="tile-top"><div class="month-icon">${icon('doc',17)}</div>${badge}</div>
-      <h3>${examHeadlineHtml(ex)}</h3>
+      <h3>${examHeadlineHtml(ex)}${examTypeChip(ex)}</h3>
       <div class="sub">${sub}${dropped?` · ${dropped}`:''}</div>
     </div>`;
   }).join('')}</div>`}
@@ -838,7 +841,7 @@ function screenExamLang(){
   <div class="wrap-narrow">
   <div class="crumb"><a data-back="month">${esc(monthById(S.monthId).label)}</a> <span>/</span> <span>${esc(examHeadlinePlain(ex))}</span></div>
   <div class="card" style="text-align:center;">
-    <h2 style="margin-top:0;">${examHeadlineHtml(ex)}</h2>
+    <h2 style="margin-top:0;">${examHeadlineHtml(ex)}${examTypeChip(ex)}</h2>
     <p style="color:var(--muted);font-size:13.5px;">${qs.length} questions · 1 mark each · Total ${qs.length} marks<br>All questions are compulsory. You can attempt this exam once until it is re-approved.</p>
     <div class="divider"></div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Choose exam language / भाषा चुनें</p>
@@ -868,7 +871,7 @@ function screenExamRun(){
   const showToggle = !ex.qLang || ex.qLang==='both';
   return `
   <div class="exam-meta">
-    <div><h2 style="margin:0;">${examHeadlineHtml(ex)}</h2><p style="margin:2px 0 0;color:var(--muted);font-size:13px;">${answered} / ${qs.length} answered</p></div>
+    <div><h2 style="margin:0;">${examHeadlineHtml(ex)}${examTypeChip(ex)}</h2><p style="margin:2px 0 0;color:var(--muted);font-size:13px;">${answered} / ${qs.length} answered</p></div>
     ${showToggle?`<div class="lang-toggle">
       <button class="${lang==='en'?'active':''}" data-switch-lang="en">EN</button>
       <button class="${lang==='hi'?'active':''}" data-switch-lang="hi">हिं</button>
@@ -956,10 +959,10 @@ function screenMyExams(){
   <div class="crumb"><a data-back="dash">Dashboard</a> <span>/</span> <span>My previous exams</span></div>
   <div class="panel-head"><div><h2>My previous exams</h2><p>All the exams you have attempted are listed here.</p></div></div>
   ${list.length===0 ? emptyState('doc','No exam attempted yet','Select a month to start taking an exam.') :
-  `<div class="table-wrap"><table><thead><tr><th>Exam</th><th>Month</th><th>Date</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>
+  `<div class="table-wrap"><table><thead><tr><th>Exam</th><th>Type</th><th>Month</th><th>Date</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>
     ${list.map(a=>{
       const ex = examById(a.examId); const m = monthById(ex.monthId); const dt = fmtDateTime(a.submittedAt);
-      return `<tr><td>${esc(examHeadlinePlain(ex))}</td><td>${esc(m?m.label:'-')}</td><td class="mono">${dt.date} ${dt.time}</td><td class="mono">${a.score}/${a.total}</td>
+      return `<tr><td>${esc(examHeadlinePlain(ex))}</td><td>${ex.examType?esc(ex.examType):'-'}</td><td>${esc(m?m.label:'-')}</td><td class="mono">${dt.date} ${dt.time}</td><td class="mono">${a.score}/${a.total}</td>
       <td>${a.approvedRetake?'<span class="badge badge-open">Re-attempt open</span>':'<span class="badge badge-locked">Locked</span>'}</td>
       <td><button class="btn btn-sm" data-view="${a.id}">View</button></td></tr>`;
     }).join('')}
@@ -1305,12 +1308,9 @@ function adminExamQuestions(){
       <div class="field"><label>Question (English)</label><textarea name="textEn" rows="2" required>${esc(QB_STATE.textEn)}</textarea></div>`}
       <div class="field">
         <label>Option type</label>
-        <div style="display:flex;align-items:stretch;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-          <div class="tabs" style="max-width:280px;margin:0;">
-            <div class="tab ${QB_STATE.optType==='text'?'active':''}" data-opttype="text">Text</div>
-            <div class="tab ${QB_STATE.optType==='image'?'active':''}" data-opttype="image">Image</div>
-          </div>
-          <button type="button" class="btn btn-primary" id="doneQBtn" style="padding:8px 18px;font-size:13.5px;font-weight:700;" title="Click here once the question is ready — only then will it appear on the security person site">✓ Done</button>
+        <div class="tabs" style="max-width:280px;margin:0;">
+          <div class="tab ${QB_STATE.optType==='text'?'active':''}" data-opttype="text">Text</div>
+          <div class="tab ${QB_STATE.optType==='image'?'active':''}" data-opttype="image">Image</div>
         </div>
       </div>
       <div id="optBuilders">${renderOptBuilders(qLang)}</div>
@@ -1318,14 +1318,16 @@ function adminExamQuestions(){
     </form>
   </div>
   <div class="card">
-    <div class="panel-head"><div><h2>Questions in this exam (${qs.length})</h2></div></div>
+    <div class="panel-head">
+      <div><h2>Questions in this exam (${qs.length})</h2></div>
+      ${qs.some(q=>!isQPublished(q))?`<button class="btn btn-primary" id="publishAllBtn" type="button" title="Publish every draft question in this exam so it appears on the security person site">✓ Done — publish all drafts</button>`:''}
+    </div>
     ${qs.length===0?emptyState('clipboard','No question yet','Add the first question from above.'):
     qs.map((q,i)=>{
       const pub = isQPublished(q);
       const statusChip = pub?`<span class="badge badge-done">Live · security site pr</span>`:`<span class="badge badge-pending">Draft · not visible to guard yet</span>`;
-      const publishBtn = pub?'':`<button class="btn btn-sm btn-primary" data-publishq="${q.id}">✓ Done</button>`;
       return `<div class="q-edit-row">
-      <div class="qtop"><b>${i+1}. ${esc(qLang==='hi'?q.textHi:q.textEn)}</b><div style="display:flex;gap:6px;flex-shrink:0;align-items:center;">${statusChip} ${publishBtn}<button class="btn btn-sm" data-editq="${q.id}">✎ Edit</button><button class="btn btn-sm btn-danger" data-delq="${q.id}">Delete</button></div></div>
+      <div class="qtop"><b>${i+1}. ${esc(qLang==='hi'?q.textHi:q.textEn)}</b><div style="display:flex;gap:6px;flex-shrink:0;align-items:center;">${statusChip}<button class="btn btn-sm" data-editq="${q.id}">✎ Edit</button><button class="btn btn-sm btn-danger" data-delq="${q.id}">Delete</button></div></div>
       ${qLang==='both'?`<div style="color:var(--muted);font-size:12.5px;margin-top:2px;">${esc(q.textHi)}</div>`:''}
       <div class="opts-preview">${q.options.map((o,oi)=>`<span class="chip ${oi===q.correct?'right':''}">${letter(oi)}: ${q.optType==='image'?'[image]':esc(qLang==='hi'?o.hi:o.en)}${oi===q.correct?' ✓ correct':''}</span>`).join('')}</div>
     </div>`;
@@ -1437,15 +1439,15 @@ function bindAdminExamQuestions(){
     }
     return true;
   }
-  /* forcePublish===true -> always published (the "Done" button);
-     otherwise: editing keeps the question's current draft/live status,
-     a brand-new question is saved as a draft until admin hits Done. */
-  function saveQuestion(forcePublish){
+  /* Questions are always saved as drafts (unpublished) until the admin
+     clicks the single "Done — publish all drafts" button above the list,
+     which publishes every draft question in this exam at once.
+     Editing an existing question keeps its current draft/live status. */
+  function saveQuestion(){
     if(!collectAndValidate()) return;
     const isEdit = !!QB_STATE.editId;
     let publishedVal;
-    if(forcePublish===true) publishedVal = true;
-    else if(isEdit){
+    if(isEdit){
       const existing = DB.questions.find(qq=>qq.id===QB_STATE.editId);
       publishedVal = existing ? isQPublished(existing) : false;
     } else {
@@ -1488,19 +1490,17 @@ function bindAdminExamQuestions(){
     }
   }
   if(f) f.addEventListener('submit', e=>{ e.preventDefault(); saveQuestion(); });
-  const doneBtn = document.getElementById('doneQBtn');
-  if(doneBtn) doneBtn.addEventListener('click', ()=> saveQuestion(true));
-  document.querySelectorAll('[data-publishq]').forEach(el=>el.addEventListener('click',()=>{
-    const id = el.getAttribute('data-publishq');
-    const q = DB.questions.find(qq=>qq.id===id);
-    if(!q) return;
-    el.disabled = true; el.textContent = 'Publishing…';
-    sb.from('questions').update({published:true}).eq('id', id).then(({error})=>{
-      if(error){ console.error(error); alert('Publish failed, please try again.'); el.disabled=false; el.textContent='✓ Done'; return; }
-      q.published = true;
+  const publishAllBtn = document.getElementById('publishAllBtn');
+  if(publishAllBtn) publishAllBtn.addEventListener('click', ()=>{
+    const drafts = questionsForExam(S.adminExamId).filter(q=>!isQPublished(q));
+    if(drafts.length===0) return;
+    publishAllBtn.disabled = true; publishAllBtn.textContent = 'Publishing…';
+    sb.from('questions').update({published:true}).in('id', drafts.map(q=>q.id)).then(({error})=>{
+      if(error){ console.error(error); alert('Publish failed, please try again.'); publishAllBtn.disabled=false; publishAllBtn.textContent='✓ Done — publish all drafts'; return; }
+      drafts.forEach(q=>{ q.published = true; });
       patch({});
     });
-  }));
+  });
 }
 function rebindOptBuilders(){
   document.querySelectorAll('[name="correctOpt"]').forEach(el=>el.addEventListener('change',()=>{ QB_STATE.correct = parseInt(el.value,10); }));
