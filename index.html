@@ -250,6 +250,11 @@ footer.mini{text-align:center;padding:20px;color:var(--muted-2);font-size:12px;}
 .stat-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:16px;}
 .stat-box .n{font-size:22px;font-weight:800;font-family:var(--font-mono);}
 .stat-box .l{font-size:11.5px;color:var(--muted);margin-top:3px;}
+.stat-box.clickable{cursor:pointer;transition:.15s border-color,.15s transform;}
+.stat-box.clickable:hover{border-color:var(--amber);}
+.stat-box.clickable:active{transform:scale(.98);}
+.stat-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:0;}
+@media (max-width:600px){.stat-row-3{grid-template-columns:1fr;}}
 select.select-inline{width:auto;display:inline-block;}
 .toggle-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--muted);}
 
@@ -284,6 +289,33 @@ select.select-inline{width:auto;display:inline-block;}
   font-family:var(--font-mono);flex-shrink:0;
 }
 .notif-badge .ic{width:13px;height:13px;}
+
+/* ---- exam completed tick (replaces old "Locked" text badge) ---- */
+.done-tick{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;
+  background:var(--green);color:#0b2416;flex-shrink:0;
+}
+.done-tick .ic{width:12px;height:12px;}
+
+/* ---- month lock/unlock (admin toggle + guard-side indicator) ---- */
+.lock-toggle{
+  border:1px solid var(--line-2);background:var(--panel-2);border-radius:var(--radius-sm);
+  padding:7px 9px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:.15s border-color,.15s color,.15s background;
+}
+.lock-toggle .ic{width:15px;height:15px;}
+.lock-toggle.is-locked{color:var(--red);border-color:var(--red);background:var(--red-soft);}
+.lock-toggle.is-unlocked{color:var(--green);border-color:var(--green);background:var(--green-soft);}
+.lock-toggle:disabled{opacity:.6;cursor:not-allowed;}
+.tile.tile-locked{cursor:not-allowed;opacity:.72;}
+.tile.tile-locked:hover{border-color:var(--line);transform:none;}
+.month-lock-badge{
+  display:flex;align-items:center;justify-content:center;
+  width:26px;height:26px;border-radius:50%;
+  background:var(--red-soft);color:var(--red);border:1px solid var(--red);flex-shrink:0;
+}
+.month-lock-badge .ic{width:13px;height:13px;}
 
 /* ---- exam security mode (no copy / screenshot deterrent) ---- */
 body.secure-mode, body.secure-mode *{
@@ -413,7 +445,9 @@ const ICONS = {
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>',
   image:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>',
   empty:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M8 14h2"/></svg>',
-  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13"/><path d="M10 11v6M14 11v6"/></svg>'
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13"/><path d="M10 11v6M14 11v6"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
+  unlock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 017.6-1.8"/></svg>'
 };
 function icon(name, size){ return `<span class="ic" style="--ic-size:${size||18}px;">${ICONS[name]||''}</span>`; }
 
@@ -474,6 +508,42 @@ function latestAttempt(guardMobile, examId){ const l = attemptsFor(guardMobile, 
 function allAttemptsForGuard(mobile){ return DB.attempts.filter(a=>a.guardMobile===mobile).sort((a,b)=>b.submittedAt-a.submittedAt); }
 function examById(id){ return DB.exams.find(e=>e.id===id); }
 function monthById(id){ return DB.months.find(m=>m.id===id); }
+/* Ranks every registered guard by their all-time percentage across every exam
+   they have attempted at least once (latest attempt per exam is used, so a
+   retake doesn't get double-counted). Highest percentage first. */
+function guardRanking(){
+  return DB.guards.map(g=>{
+    const atts = allAttemptsForGuard(g.mobile);
+    const examIds = [...new Set(atts.map(a=>a.examId))];
+    let totalMarks=0, achievedMarks=0;
+    examIds.forEach(exId=>{
+      const la = latestAttempt(g.mobile, exId);
+      if(la){ totalMarks += la.total; achievedMarks += la.score; }
+    });
+    const pct = totalMarks>0 ? (achievedMarks/totalMarks*100) : 0;
+    return { g, totalMarks, achievedMarks, pct, examsAttempted: examIds.length };
+  }).sort((a,b)=> b.pct-a.pct || b.examsAttempted-a.examsAttempted);
+}
+/* For a given month record, which of its exams are "in scope" given the
+   Exam-type filter — either all exams of the month, or just the one type. */
+function masterDataExamsToCheck(){
+  const monthsAll = monthsSorted();
+  const selMonthRec = monthsAll.find(m=>m.monthNum===S.mdMonthNum && m.year===S.mdYear) || null;
+  const examsInMonth = selMonthRec ? examsForMonth(selMonthRec.id) : [];
+  const examsToCheck = S.mdExamType ? examsInMonth.filter(e=>e.examType===S.mdExamType) : examsInMonth;
+  return { selMonthRec, examsInMonth, examsToCheck };
+}
+/* A guard counts as "Attend" only if they attempted every exam currently in
+   scope (per masterDataExamsToCheck); missing even one puts them in "Not Attend". */
+function masterDataAttendance(){
+  const { examsToCheck } = masterDataExamsToCheck();
+  const attend = [], notAttend = [];
+  DB.guards.forEach(g=>{
+    const attemptedAll = examsToCheck.length>0 && examsToCheck.every(ex=>DB.attempts.some(a=>a.guardMobile===g.mobile && a.examId===ex.id));
+    (attemptedAll?attend:notAttend).push(g);
+  });
+  return { attend, notAttend };
+}
 
 /* ---- exam name headline (security-person side): controlled by admin's
    "Exam name (English)" / "Exam name (Hindi)" checkboxes. Older exams saved
@@ -758,10 +828,11 @@ function screenGuardDashboard(){
   `<div class="grid">${months.map(m=>{
     const exams = examsForMonth(m.id);
     const unseenCount = exams.filter(ex=>!seen.includes(ex.id)).length;
-    return `<div class="tile" data-month="${m.id}">
-      <div class="tile-top"><div class="month-icon">${icon('calendar',17)}</div>${unseenCount>0?`<div class="notif-badge">${icon('bell',13)} ${unseenCount}</div>`:''}</div>
+    const locked = !!m.locked;
+    return `<div class="tile ${locked?'tile-locked':''}" data-month="${m.id}" ${locked?'data-locked="1"':''}>
+      <div class="tile-top"><div class="month-icon">${icon('calendar',17)}</div>${locked?`<div class="month-lock-badge" title="Locked by admin">${icon('lock',13)}</div>`:(unseenCount>0?`<div class="notif-badge">${icon('bell',13)} ${unseenCount}</div>`:'')}</div>
       <h3>${esc(m.label)}</h3>
-      <div class="sub">${exams.length} exam section${exams.length===1?'':'s'}</div>
+      <div class="sub">${locked?'Locked by admin':`${exams.length} exam section${exams.length===1?'':'s'}`}</div>
     </div>`;
   }).join('')}</div>`}
   `;
@@ -770,6 +841,7 @@ function bindGuardDashboard(){
   const btn = document.querySelector('[data-act="myexams"]');
   if(btn) btn.addEventListener('click',()=>go('guard-myexams'));
   document.querySelectorAll('.tile[data-month]').forEach(el=>el.addEventListener('click',()=>{
+    if(el.getAttribute('data-locked')==='1'){ alert('This month is locked by the admin. Please check back later.'); return; }
     const monthId = el.getAttribute('data-month');
     const g = findGuard(SESSION.mobile);
     if(g){
@@ -802,7 +874,7 @@ function screenGuardMonth(){
     let badge, sub;
     if(!att){ badge = `<span class="badge badge-open">Not attempted</span>`; sub = `${qcount} questions`; }
     else if(att.approvedRetake){ badge = `<span class="badge badge-open">Re-attempt allowed</span>`; sub = `Last score: ${att.score}/${att.total}`; }
-    else { badge = `<span class="badge badge-locked">Locked</span>`; sub = `Score: ${att.score}/${att.total}`; }
+    else { badge = `<span class="done-tick" title="Exam completed">${icon('check',12)}</span>`; sub = `Score: ${att.score}/${att.total}`; }
     const dropped = ex.createdAt ? `Dropped on ${fmtDateTime(ex.createdAt).date}` : '';
     return `<div class="tile" data-exam="${ex.id}">
       <div class="tile-top"><div class="month-icon">${icon('doc',17)}</div>${badge}</div>
@@ -1080,6 +1152,7 @@ function bindAdminAuth(){
 function screenAdminDashboard(){
   const tab = S.adminTab || 'months';
   const nav = [
+    ['masterdata',icon('chart',15),'Master Data'],
     ['months',icon('calendar',15),'Months &amp; Exams'],
     ['results',icon('chart',15),'Results'],
     ['search',icon('search',15),'Search Security Person'],
@@ -1093,6 +1166,7 @@ function screenAdminDashboard(){
   </div>`;
 }
 function adminContent(tab){
+  if(tab==='masterdata') return adminMasterData();
   if(tab==='months') return adminMonths();
   if(tab==='exam') return adminExamQuestions();
   if(tab==='results') return adminResults();
@@ -1105,6 +1179,7 @@ function bindAdminDashboard(){
   bindAdminContent(S.adminTab||'months');
 }
 function bindAdminContent(tab){
+  if(tab==='masterdata') return bindAdminMasterData();
   if(tab==='months') return bindAdminMonths();
   if(tab==='exam') return bindAdminExamQuestions();
   if(tab==='results') return bindAdminResults();
@@ -1139,8 +1214,11 @@ function adminMonths(){
     months.map(m=>{
       const exams = examsForMonth(m.id);
       const added = m.createdAt ? ` · Added ${fmtDateTime(m.createdAt).date}` : '';
+      const locked = !!m.locked;
       return `<div class="item-row"><div class="info"><b>${esc(m.label)}</b><span>${exams.length} exam section${exams.length===1?'':'s'}${added}</span></div>
-      <div class="actions"><button class="btn btn-sm" data-openmonth="${m.id}">Manage exams →</button>
+      <div class="actions">
+      <button class="lock-toggle ${locked?'is-locked':'is-unlocked'}" data-lockmonth="${m.id}" title="${locked?'Locked — click to unlock for security persons':'Unlocked — click to lock for security persons'}">${icon(locked?'lock':'unlock',15)}</button>
+      <button class="btn btn-sm" data-openmonth="${m.id}">Manage exams →</button>
       <button class="btn btn-sm btn-danger" data-delmonth="${m.id}">Delete</button></div></div>`;
     }).join('')}
   </div>`;
@@ -1158,7 +1236,7 @@ function bindAdminMonths(){
     const yearNum = parseInt(fd.get('yearNum'),10);
     if(DB.months.some(m=>m.monthNum===monthNum && m.year===yearNum)){ alert('This month has already been added.'); return; }
     const label = MONTH_NAMES[monthNum] + ' ' + yearNum;
-    const month = {id:uid('mo'), label, monthNum, year:yearNum, createdAt:Date.now()};
+    const month = {id:uid('mo'), label, monthNum, year:yearNum, createdAt:Date.now(), locked:false};
     withBusy(f, async ()=>{
       const {error} = await sb.from('months').insert(toSnake(month));
       if(error) throw error;
@@ -1167,6 +1245,18 @@ function bindAdminMonths(){
       patch({});
     });
   });
+  document.querySelectorAll('[data-lockmonth]').forEach(el=>el.addEventListener('click',()=>{
+    const id = el.getAttribute('data-lockmonth');
+    const m = monthById(id);
+    if(!m) return;
+    const newVal = !m.locked;
+    el.disabled = true;
+    sb.from('months').update({locked:newVal}).eq('id', id).then(({error})=>{
+      if(error){ console.error(error); alert('Could not update the lock status. Please try again.'); el.disabled=false; return; }
+      m.locked = newVal;
+      patch({});
+    });
+  }));
   document.querySelectorAll('[data-openmonth]').forEach(el=>el.addEventListener('click',()=>goPush({adminMonthId:el.getAttribute('data-openmonth')})));
   document.querySelectorAll('[data-delmonth]').forEach(el=>el.addEventListener('click',()=>{
     if(!confirm('Delete this entire month? All its exam sections, questions and attempts will also be deleted.')) return;
@@ -1551,8 +1641,8 @@ function adminResults(){
       <div class="field" style="margin-bottom:0;"><label>Month</label>
         <select id="filterMonth">${months.map(m=>`<option value="${m.id}" ${m.id===selMonth?'selected':''}>${esc(m.label)}</option>`).join('')}</select>
       </div>
-      <div class="field" style="margin-bottom:0;"><label>Exam section</label>
-        <select id="filterExam">${exams.map(e=>`<option value="${e.id}" ${e.id===selExam?'selected':''}>${esc(e.nameEn)}</option>`).join('')}</select>
+      <div class="field" style="margin-bottom:0;"><label>Exam type</label>
+        <select id="filterExam">${exams.map(e=>`<option value="${e.id}" ${e.id===selExam?'selected':''}>${esc(e.examType||e.nameEn)}</option>`).join('')}</select>
       </div>
     </div>
     ${selExam?`<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary btn-sm" id="exportBtn">⬇ Export to Excel</button></div>`:''}
@@ -1637,6 +1727,136 @@ function fallbackDownload(blob, filename){
   const a = document.createElement('a'); a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+/* --- Admin: Master Data --- */
+function adminMasterData(){
+  if(S.mdView) return adminMasterDataDetail(S.mdView);
+  const monthsAll = monthsSorted();
+  const monthNumsPresent = [...new Set(monthsAll.map(m=>m.monthNum))].sort((a,b)=>a-b);
+  const defMonthNum = S.mdMonthNum!=null ? S.mdMonthNum : (monthNumsPresent.length?monthNumsPresent[0]:null);
+  const yearsForMonth = monthsAll.filter(m=>m.monthNum===defMonthNum).map(m=>m.year).sort((a,b)=>a-b);
+  const defYear = S.mdYear!=null ? S.mdYear : (yearsForMonth.length?yearsForMonth[0]:null);
+  if(S.mdMonthNum==null && defMonthNum!=null){ S.mdMonthNum = defMonthNum; }
+  if(S.mdYear==null && defYear!=null){ S.mdYear = defYear; }
+  const { selMonthRec, examsInMonth } = masterDataExamsToCheck();
+  const examTypesPresent = [...new Set(examsInMonth.map(e=>e.examType).filter(Boolean))];
+  const selExamType = S.mdExamType || '';
+  const totalGuards = DB.guards.length;
+  const { attend, notAttend } = masterDataAttendance();
+  return `
+  <div class="card" style="margin-bottom:16px;">
+    <div class="panel-head"><div><h2>Master Data</h2><p>Month, year aur exam type chuniye — registered, attend aur not-attend security persons dekhne ke liye.</p></div></div>
+    <div class="field-row" style="grid-template-columns:1fr 1fr 1fr;">
+      <div class="field" style="margin-bottom:0;">
+        <label>Month</label>
+        <select id="mdMonthSel" ${monthNumsPresent.length===0?'disabled':''}>${monthNumsPresent.length===0?'<option value="">-</option>':monthNumsPresent.map(mn=>`<option value="${mn}" ${mn===defMonthNum?'selected':''}>${MONTH_NAMES[mn]}</option>`).join('')}</select>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Year</label>
+        <select id="mdYearSel" ${yearsForMonth.length===0?'disabled':''}>${yearsForMonth.length===0?'<option value="">-</option>':yearsForMonth.map(y=>`<option value="${y}" ${y===defYear?'selected':''}>${y}</option>`).join('')}</select>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Exam type</label>
+        <select id="mdExamTypeSel" ${examTypesPresent.length===0?'disabled':''}>
+          <option value="">All exam types</option>
+          ${examTypesPresent.map(t=>`<option value="${esc(t)}" ${t===selExamType?'selected':''}>${esc(t)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  </div>
+  ${monthNumsPresent.length===0?emptyState('calendar','No month added yet','Pehle "Months &amp; Exams" me month aur exam section add karein.'):
+  !selMonthRec?emptyState('calendar','This month/year has no data','Kripya koi aur Month/Year chunein.'):
+  examsInMonth.length===0?emptyState('doc','No exam section in this month','Is month me abhi koi exam section nahin hai.'):`
+  <div class="stat-row-3">
+    <div class="stat-box clickable" data-mdbox="registered"><div class="n">${totalGuards}</div><div class="l">Registered security person</div></div>
+    <div class="stat-box clickable" data-mdbox="attend"><div class="n" style="color:var(--green);">${attend.length}</div><div class="l">Attend</div></div>
+    <div class="stat-box clickable" data-mdbox="notattend"><div class="n" style="color:var(--red);">${notAttend.length}</div><div class="l">Not Attend</div></div>
+  </div>`}`;
+}
+function adminMasterDataDetail(view){
+  let title, showRank=false, rows;
+  if(view==='registered'){
+    title = 'Registered security person';
+    showRank = true;
+    rows = guardRanking().map((r,i)=>Object.assign({}, r, {rank:i+1}));
+  } else {
+    const { attend, notAttend } = masterDataAttendance();
+    title = view==='attend' ? 'Attend' : 'Not Attend';
+    rows = (view==='attend'?attend:notAttend).map(g=>({g}));
+  }
+  const q = (S.mdSearchQuery||'').trim().toLowerCase();
+  const filteredRows = q ? rows.filter(r=> r.g.name.toLowerCase().includes(q) || r.g.gatePass.toLowerCase().includes(q) || r.g.mobile.includes(q)) : rows;
+  return `
+  <div class="crumb"><a data-mdback="1">Master Data</a> <span>/</span> <span>${esc(title)}</span></div>
+  <div class="card">
+    <div class="panel-head"><div><h2>${esc(title)} (${rows.length})</h2></div></div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary btn-sm" id="mdExportBtn">⬇ Export to Excel</button></div>
+    <div class="search-box"><input type="text" id="mdSearchInput" placeholder="Search by name, gate pass or mobile…" value="${esc(S.mdSearchQuery||'')}"></div>
+    ${filteredRows.length===0?emptyState('search','No security person found','Check the spelling and try again.'):
+    `<div class="table-wrap"><table><thead><tr>${showRank?'<th>Rank</th>':'<th>S.No.</th>'}<th>Name</th><th>Gate pass</th><th>Mobile</th><th>Post</th>${showRank?'<th>Marks</th><th>Percentage</th>':''}</tr></thead><tbody>
+    ${filteredRows.map((r,idx)=>{
+      const g=r.g;
+      return `<tr><td class="mono">${showRank?r.rank:idx+1}</td><td>${esc(g.name)}</td><td class="mono">${esc(g.gatePass)}</td><td class="mono">${esc(g.mobile)}</td><td>${esc(g.post)}</td>${showRank?`<td class="mono">${r.achievedMarks}/${r.totalMarks}</td><td class="mono">${r.pct.toFixed(1)}%</td>`:''}</tr>`;
+    }).join('')}
+    </tbody></table></div>`}
+  </div>`;
+}
+function bindAdminMasterData(){
+  if(S.mdView){ bindAdminMasterDataDetail(); return; }
+  const ms = document.getElementById('mdMonthSel');
+  if(ms) ms.addEventListener('change',()=>{
+    const mn = ms.value===''?null:parseInt(ms.value,10);
+    const yearsForMonth = monthsSorted().filter(m=>m.monthNum===mn).map(m=>m.year).sort((a,b)=>a-b);
+    patch({mdMonthNum:mn, mdYear: yearsForMonth.length?yearsForMonth[0]:null, mdExamType:''});
+  });
+  const ys = document.getElementById('mdYearSel');
+  if(ys) ys.addEventListener('change',()=>patch({mdYear: ys.value===''?null:parseInt(ys.value,10), mdExamType:''}));
+  const ets = document.getElementById('mdExamTypeSel');
+  if(ets) ets.addEventListener('change',()=>patch({mdExamType: ets.value}));
+  document.querySelectorAll('[data-mdbox]').forEach(el=>el.addEventListener('click',()=>{
+    goPush({mdView: el.getAttribute('data-mdbox'), mdSearchQuery:''});
+  }));
+}
+function bindAdminMasterDataDetail(){
+  const back = document.querySelector('[data-mdback]');
+  if(back) back.addEventListener('click', goBack);
+  const inp = document.getElementById('mdSearchInput');
+  if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
+    inp.addEventListener('input',()=>patch({mdSearchQuery:inp.value})); }
+  const exp = document.getElementById('mdExportBtn');
+  if(exp) exp.addEventListener('click',()=>exportMasterDataExcel(S.mdView));
+}
+function exportMasterDataExcel(view){
+  let header, dataRows, title;
+  if(view==='registered'){
+    const ranking = guardRanking();
+    header = ['Rank','Name','Gate Pass Number','Mobile','Post','Achieved Marks','Total Marks','Percentage'];
+    dataRows = ranking.map((r,i)=>[i+1, r.g.name, r.g.gatePass, r.g.mobile, r.g.post, r.achievedMarks, r.totalMarks, r.pct.toFixed(1)+'%']);
+    title = 'Registered security person';
+  } else {
+    const { attend, notAttend } = masterDataAttendance();
+    const list = view==='attend' ? attend : notAttend;
+    header = ['S.No.','Name','Gate Pass Number','Mobile','Post'];
+    dataRows = list.map((g,i)=>[i+1, g.name, g.gatePass, g.mobile, g.post]);
+    title = view==='attend' ? 'Attend' : 'Not Attend';
+  }
+  if(dataRows.length===0){ alert('There is no data to export.'); return; }
+  const rows = [header, ...dataRows];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = header.map(h=>({wch: Math.max(14,h.length+2)}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, title.slice(0,28));
+  const blob = new Blob([XLSX.write(wb,{bookType:'xlsx', type:'array'})], {type:'application/octet-stream'});
+  const filename = title.replace(/[^a-z0-9]+/gi,'_') + '_masterdata.xlsx';
+  if(window.claude){
+    claude.use('downloads').then(dl=>{
+      if(!dl){ fallbackDownload(blob, filename); return; }
+      dl.save({filename, data: blob}).catch(()=>fallbackDownload(blob, filename));
+    }).catch(()=>fallbackDownload(blob, filename));
+  } else {
+    fallbackDownload(blob, filename);
+  }
 }
 
 /* --- Admin: Search --- */
