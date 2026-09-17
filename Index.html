@@ -1,0 +1,1790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Vedanta Security Exam Portal — VSES</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0A0F1C;
+  --bg-2:#0D1424;
+  --panel:#121A2E;
+  --panel-2:#182238;
+  --line:#232F49;
+  --line-2:#2C3A5A;
+  --text:#EAEFF9;
+  --muted:#8C99B8;
+  --muted-2:#5F6C8C;
+  --amber:#F0A93B;
+  --amber-soft:rgba(240,169,59,.14);
+  --green:#3FBF7F;
+  --green-soft:rgba(63,191,127,.14);
+  --red:#E5636B;
+  --red-soft:rgba(229,99,107,.14);
+  --blue:#5B8DEF;
+  --radius:12px;
+  --radius-sm:8px;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --font-dev:'Noto Sans Devanagari','Inter',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+}
+/* Light theme removed — the site now always uses the dark palette above. */
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+[lang-hi]{font-family:var(--font-dev);}
+#app{min-height:100vh;display:flex;flex-direction:column;}
+::selection{background:var(--amber-soft);}
+a{color:inherit;}
+button{font-family:inherit;}
+.wrap{max-width:1100px;margin:0 auto;padding:0 20px;width:100%;}
+.wrap-narrow{max-width:640px;margin:0 auto;padding:0 20px;width:100%;}
+
+/* ---- topbar ---- */
+.topbar{
+  border-bottom:1px solid var(--line);
+  background:var(--panel);
+  position:sticky;top:0;z-index:20;
+}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;max-width:1100px;margin:0 auto;}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;font-size:16px;}
+.brand-dot{width:9px;height:9px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 4px var(--amber-soft);flex-shrink:0;}
+.brand small{display:block;color:var(--muted);font-weight:500;font-size:11px;margin-top:1px;}
+.session-chip{display:flex;align-items:center;gap:10px;}
+.session-chip .who{text-align:right;line-height:1.25;}
+.session-chip .who b{font-size:13px;display:block;}
+.session-chip .who span{font-size:11px;color:var(--muted);font-family:var(--font-mono);}
+.btn{
+  border:1px solid var(--line-2);
+  background:var(--panel-2);
+  color:var(--text);
+  padding:9px 16px;
+  border-radius:var(--radius-sm);
+  font-size:13.5px;
+  font-weight:600;
+  cursor:pointer;
+  transition:.15s border-color, .15s background, .15s transform;
+  display:inline-flex;align-items:center;gap:7px;
+}
+.btn:hover{border-color:var(--amber);}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:var(--amber);border-color:var(--amber);color:#211404;}
+.btn-primary:hover{background:#f5b658;border-color:#f5b658;}
+.btn-primary:disabled{background:var(--panel-2);border-color:var(--line);color:var(--muted-2);cursor:not-allowed;}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--muted);}
+.btn-ghost:hover{color:var(--text);border-color:var(--line-2);}
+.btn-danger{border-color:var(--red);color:var(--red);background:transparent;}
+.btn-danger:hover{background:var(--red-soft);}
+.btn-icon{padding:7px 9px;display:inline-flex;align-items:center;justify-content:center;}
+.btn-sm{padding:6px 11px;font-size:12.5px;}
+.btn-block{width:100%;justify-content:center;}
+
+main{flex:1;padding:32px 0 60px;}
+
+/* ---- hero / role select ---- */
+.hero{padding:56px 0 20px;text-align:center;}
+.hero h1{font-size:34px;margin:0 0 10px;font-weight:800;letter-spacing:-.5px;}
+.hero p{color:var(--muted);font-size:15px;margin:0 auto;max-width:480px;line-height:1.55;}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:36px;}
+@media (max-width:560px){.role-grid{grid-template-columns:1fr;}}
+.role-card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:26px 22px;text-align:left;cursor:pointer;transition:.15s border-color,.15s transform;
+}
+.role-card:hover{border-color:var(--amber);transform:translateY(-2px);}
+.role-card .icon{width:40px;height:40px;border-radius:10px;background:var(--amber-soft);display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:14px;}
+.role-card h3{margin:0 0 6px;font-size:17px;}
+.role-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.5;}
+
+/* ---- card / panel ---- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+.panel-head h2{margin:0;font-size:19px;}
+.panel-head p{margin:2px 0 0;color:var(--muted);font-size:13px;}
+
+/* ---- tabs ---- */
+.tabs{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:4px;margin-bottom:22px;}
+.tab{flex:1;text-align:center;padding:8px 10px;border-radius:6px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--muted);}
+.tab.active{background:var(--amber);color:#211404;}
+
+/* ---- form ---- */
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px;font-weight:600;}
+.field input,.field select,.field textarea{
+  width:100%;background:var(--bg-2);border:1px solid var(--line-2);color:var(--text);
+  padding:11px 12px;border-radius:var(--radius-sm);font-size:14.5px;font-family:inherit;
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--amber);outline-offset:0;border-color:var(--amber);}
+.field .hint{font-size:11.5px;color:var(--muted-2);margin-top:5px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media (max-width:520px){.field-row{grid-template-columns:1fr;}}
+.error-box{background:var(--red-soft);border:1px solid var(--red);color:#ffb3b7;padding:10px 13px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:16px;}
+.info-box{background:var(--amber-soft);border:1px solid var(--amber);color:var(--text);padding:10px 13px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:16px;}
+
+/* ---- month/exam grid ---- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+.tile{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:20px;cursor:pointer;transition:.15s border-color,.15s transform;text-align:left;
+}
+.tile:hover{border-color:var(--amber);transform:translateY(-2px);}
+.tile .tile-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+.tile .month-icon{width:34px;height:34px;border-radius:8px;background:var(--panel-2);display:flex;align-items:center;justify-content:center;font-size:16px;}
+.tile h3{margin:0 0 4px;font-size:16px;}
+.tile .sub{color:var(--muted);font-size:12.5px;}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.2px;}
+.badge-pending{background:var(--panel-2);color:var(--muted);border:1px solid var(--line-2);}
+.badge-done{background:var(--green-soft);color:var(--green);}
+.badge-locked{background:var(--red-soft);color:var(--red);}
+.badge-open{background:var(--amber-soft);color:var(--amber);}
+
+.crumb{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;margin-bottom:18px;flex-wrap:wrap;}
+.crumb a{color:var(--muted);cursor:pointer;text-decoration:none;}
+.crumb a:hover{color:var(--amber);}
+
+/* ---- exam runner ---- */
+.exam-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+.progress-track{height:6px;background:var(--panel-2);border-radius:4px;overflow:hidden;margin:14px 0 26px;}
+.progress-fill{height:100%;background:var(--amber);transition:width .2s;}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 20px 18px;margin-bottom:14px;}
+.qcard.answered{border-color:var(--line-2);}
+.qnum{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:var(--panel-2);font-family:var(--font-mono);font-size:12.5px;font-weight:600;color:var(--muted);margin-right:10px;flex-shrink:0;}
+.qtext{font-size:15.5px;font-weight:600;line-height:1.5;display:flex;gap:2px;align-items:flex-start;}
+.qimg{max-width:100%;border-radius:8px;margin:12px 0 4px;display:block;border:1px solid var(--line);}
+.opt-list{margin-top:14px;display:flex;flex-direction:column;gap:9px;}
+.opt-list.opt-images{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media (max-width:480px){.opt-list.opt-images{grid-template-columns:1fr;}}
+.opt{
+  display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:var(--radius-sm);
+  border:1px solid var(--line-2);background:var(--bg-2);cursor:pointer;font-size:14px;transition:.12s border-color,.12s background;
+}
+.opt:hover{border-color:var(--amber);}
+.opt.selected{border-color:var(--amber);background:var(--amber-soft);}
+.opt.correct{border-color:var(--green);background:var(--green-soft);}
+.opt.wrong{border-color:var(--red);background:var(--red-soft);}
+.opt .letter{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;flex-shrink:0;font-family:var(--font-mono);}
+.opt.selected .letter{border-color:var(--amber);background:var(--amber);color:#211404;}
+.opt.correct .letter{border-color:var(--green);background:var(--green);color:#062814;}
+.opt.wrong .letter{border-color:var(--red);background:var(--red);color:#2b0709;}
+.opt img{width:100%;border-radius:6px;display:block;margin-top:4px;}
+.opt-images .opt{flex-direction:column;align-items:stretch;}
+.opt-images .opt .letter{align-self:flex-start;margin-bottom:2px;}
+.lang-toggle{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:20px;padding:3px;}
+.lang-toggle button{border:none;background:transparent;color:var(--muted);padding:6px 14px;border-radius:16px;font-size:12.5px;font-weight:700;cursor:pointer;}
+.lang-toggle button.active{background:var(--amber);color:#211404;}
+
+/* ---- result ---- */
+.result-hero{text-align:center;padding:40px 20px;}
+.score-ring{width:140px;height:140px;border-radius:50%;margin:0 auto 22px;display:flex;align-items:center;justify-content:center;flex-direction:column;border:6px solid var(--line);position:relative;}
+.score-ring .num{font-size:34px;font-weight:800;font-family:var(--font-mono);}
+.score-ring .den{font-size:12px;color:var(--muted);}
+
+/* ---- table ---- */
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px;}
+thead th{text-align:left;padding:11px 14px;background:var(--panel-2);color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--line);white-space:nowrap;}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--line);white-space:nowrap;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--panel-2);}
+.mono{font-family:var(--font-mono);}
+.empty{text-align:center;padding:50px 20px;color:var(--muted);}
+.empty .icon{font-size:34px;margin-bottom:10px;}
+
+/* ---- admin layout ---- */
+.admin-layout{display:grid;grid-template-columns:210px 1fr;gap:22px;align-items:start;}
+@media (max-width:760px){.admin-layout{grid-template-columns:1fr;}}
+.admin-nav{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px;position:sticky;top:78px;}
+@media (max-width:760px){.admin-nav{position:static;display:flex;overflow-x:auto;gap:6px;padding:8px;}}
+.admin-nav button{
+  display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:transparent;border:none;color:var(--muted);
+  padding:10px 12px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;margin-bottom:2px;white-space:nowrap;
+}
+@media (max-width:760px){.admin-nav button{width:auto;margin-bottom:0;}}
+.admin-nav button:hover{background:var(--panel-2);color:var(--text);}
+.admin-nav button.active{background:var(--amber-soft);color:var(--amber);}
+
+.item-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;
+  border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:10px;background:var(--panel-2);
+}
+.item-row .info b{display:block;font-size:14.5px;margin-bottom:2px;}
+.item-row .info span{color:var(--muted);font-size:12px;}
+.item-row .actions{display:flex;gap:8px;flex-shrink:0;}
+
+.q-edit-row{border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px;background:var(--panel-2);}
+.q-edit-row .qtop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+.q-edit-row .qtop b{font-size:14px;}
+.q-edit-row .opts-preview{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;}
+.chip{font-size:11.5px;padding:3px 9px;border-radius:20px;background:var(--panel);border:1px solid var(--line-2);color:var(--muted);}
+.chip.right{border-color:var(--green);color:var(--green);}
+
+.opt-builder{border:1px solid var(--line-2);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;background:var(--bg-2);}
+.opt-builder-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.opt-builder-top label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;cursor:pointer;}
+.img-drop{border:1.5px dashed var(--line-2);border-radius:8px;padding:14px;text-align:center;font-size:12.5px;color:var(--muted);cursor:pointer;}
+.img-drop img{max-width:100%;max-height:90px;border-radius:6px;margin-top:8px;}
+
+.search-box{display:flex;gap:10px;margin-bottom:20px;}
+.search-box input{
+  flex:1;background:var(--bg-2);border:1px solid var(--line-2);color:var(--text);
+  padding:11px 12px;border-radius:var(--radius-sm);font-size:14.5px;font-family:inherit;
+}
+.search-box input:focus{outline:2px solid var(--amber);outline-offset:0;border-color:var(--amber);}
+
+footer.mini{text-align:center;padding:20px;color:var(--muted-2);font-size:12px;}
+.divider{height:1px;background:var(--line);margin:22px 0;}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;}
+@media (max-width:600px){.stat-row{grid-template-columns:1fr 1fr;}}
+.stat-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:16px;}
+.stat-box .n{font-size:22px;font-weight:800;font-family:var(--font-mono);}
+.stat-box .l{font-size:11.5px;color:var(--muted);margin-top:3px;}
+select.select-inline{width:auto;display:inline-block;}
+.toggle-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--muted);}
+
+/* ---- minimalist icons ---- */
+.ic{display:inline-flex;align-items:center;justify-content:center;width:var(--ic-size,18px);height:var(--ic-size,18px);flex-shrink:0;}
+.ic svg{width:100%;height:100%;}
+.brand-icon{width:26px;height:26px;border-radius:8px;background:var(--amber-soft);color:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.brand-icon .ic{width:15px;height:15px;}
+.role-card .icon{color:var(--amber);}
+.admin-nav button .ic{color:inherit;}
+.tile .month-icon{color:var(--amber);}
+
+/* ---- password show/hide ---- */
+.pw-wrap{position:relative;}
+.pw-wrap input{padding-right:40px;}
+.pw-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);cursor:pointer;padding:8px;display:flex;align-items:center;justify-content:center;border-radius:6px;}
+.pw-eye:hover{color:var(--text);}
+.pw-eye .ic{width:17px;height:17px;}
+
+/* ---- exam language mode selector ---- */
+.qlang-select{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:20px;padding:3px;flex-shrink:0;}
+.qlang-select button{border:none;background:transparent;color:var(--muted);padding:6px 12px;border-radius:16px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.qlang-select button.active{background:var(--amber);color:#211404;}
+.crumb-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;}
+.crumb-row .crumb{margin-bottom:0;}
+
+/* ---- month tile notification badge ---- */
+.tile{position:relative;}
+.notif-badge{
+  display:flex;align-items:center;gap:5px;background:var(--red-soft);color:var(--red);
+  border:1px solid var(--red);padding:3px 9px 3px 7px;border-radius:20px;font-size:11px;font-weight:700;
+  font-family:var(--font-mono);flex-shrink:0;
+}
+.notif-badge .ic{width:13px;height:13px;}
+
+/* ---- exam security mode (no copy / screenshot deterrent) ---- */
+body.secure-mode, body.secure-mode *{
+  -webkit-user-select:none!important;-moz-user-select:none!important;-ms-user-select:none!important;user-select:none!important;
+  -webkit-touch-callout:none!important;
+}
+body.secure-mode ::selection{background:transparent;}
+body.secure-mode img{-webkit-user-drag:none;user-drag:none;pointer-events:none;}
+body.secure-mode #app{filter:none;transition:filter .12s ease;}
+body.secure-mode.secure-blurred #app{filter:blur(22px) saturate(0.6);pointer-events:none;}
+.secure-overlay{
+  position:fixed;inset:0;z-index:9999;display:none;
+  align-items:center;justify-content:center;text-align:center;
+  background:rgba(10,15,28,.72);backdrop-filter:blur(2px);padding:24px;
+}
+body.secure-mode.secure-blurred .secure-overlay{display:flex;}
+.secure-overlay-card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:22px 26px;max-width:320px;font-size:13.5px;color:var(--text);line-height:1.5;
+}
+.secure-overlay-card b{display:block;margin-bottom:6px;color:var(--red);font-size:14px;}
+@media print{ body.secure-mode #app, body.secure-mode .topbar, body.secure-mode footer{ display:none!important; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="secure-overlay" id="secureOverlay"><div class="secure-overlay-card"><b>Screen protected</b>This exam screen is protected. Return to this tab/window for the content to reappear.</div></div>
+<script>
+/* =========================================================
+   SECURITY EXAM PORTAL
+   Storage: Supabase (shared cloud database).
+   Session (who's logged in on this device) still uses
+   localStorage — that's just this browser's login state.
+   ========================================================= */
+
+const POSTS = ["SO","SS","SG","CO"];
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const EXAM_TYPES = ["Pre SOP","Post SOP","Pre Psara","Post Psara","Human rights","Other"];
+
+/* =========================================================
+   Supabase-backed storage.
+   Local `DB` stays an in-memory cache with the exact same
+   shape/field names the rest of the app already uses
+   (camelCase) — only the load/save layer talks to Supabase.
+   ========================================================= */
+const SUPABASE_URL = 'https://btdqwrbrrijvnxgbpxdu.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0ZHF3cmJycmlqdm54Z2JweGR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1MzUxMDIsImV4cCI6MjEwNTExMTEwMn0.HzIdzmtqBzRjaydgh0q6j2u7ro86PI92CIShngPUjjA';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function toCamel(row){
+  const out = {};
+  for(const k in row){
+    const ck = k.replace(/_([a-z])/g,(_,c)=>c.toUpperCase());
+    let v = row[k];
+    /* timestamptz columns (registeredAt/createdAt/submittedAt) come back
+       as ISO strings from Supabase — convert to epoch-ms numbers since the
+       rest of the app sorts/formats these as numbers (Date.now()-style) */
+    if(/At$/.test(ck) && typeof v === 'string'){ const t = new Date(v).getTime(); if(!isNaN(t)) v = t; }
+    out[ck] = v;
+  }
+  return out;
+}
+function toSnake(obj){
+  const out = {};
+  for(const k in obj){
+    let v = obj[k];
+    /* reverse of the above: epoch-ms numbers -> ISO strings before sending
+       to a timestamptz column, otherwise Postgres rejects the raw number */
+    if(/At$/.test(k) && typeof v === 'number'){ v = new Date(v).toISOString(); }
+    out[k.replace(/[A-Z]/g,c=>'_'+c.toLowerCase())] = v;
+  }
+  return out;
+}
+function guardRowToObj(row){ return toCamel(row); }
+function guardObjToRow(o){ return toSnake(o); }
+function adminRowToObj(row){ const o = toCamel(row); o.password = o.passwordHash; delete o.passwordHash; return o; }
+function adminObjToRow(o){ const c = Object.assign({}, o); c.passwordHash = c.password; delete c.password; return toSnake(c); }
+
+async function loadAllData(){
+  /* admins table is intentionally NOT fetched here — its select/insert
+     policies were revoked so nobody's admin credentials ever reach a
+     browser; admin login goes through the verify_admin_login() RPC instead. */
+  const [g,m,e,q,at] = await Promise.all([
+    sb.from('guards_public').select('*'),
+    sb.from('months').select('*'),
+    sb.from('exams').select('*'),
+    sb.from('questions').select('*'),
+    sb.from('attempts').select('*'),
+  ]);
+  const firstErr = [g,m,e,q,at].find(r=>r.error);
+  if(firstErr) throw firstErr.error;
+  DB.guards = (g.data||[]).map(guardRowToObj);
+  DB.months = (m.data||[]).map(toCamel);
+  DB.exams = (e.data||[]).map(toCamel);
+  DB.questions = (q.data||[]).map(toCamel);
+  DB.attempts = (at.data||[]).map(toCamel);
+}
+async function withBusy(form, fn){
+  const btn = form.querySelector('button[type="submit"]');
+  const orig = btn ? btn.textContent : null;
+  if(btn){ btn.disabled = true; btn.textContent = 'Please wait…'; }
+  try{ await fn(); }
+  catch(err){ console.error(err); alert('Something went wrong, please try again.\n' + (err&&err.message?err.message:err)); }
+  finally{ if(btn){ btn.disabled = false; if(orig!=null) btn.textContent = orig; } }
+}
+function uid(p){ return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function fmtDateTime(ts){
+  const d = new Date(ts);
+  return { date: d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}), time: d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) };
+}
+function letter(i){ return ['A','B','C','D'][i] || '-'; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---- minimalist inline-SVG icon set (replaces emoji / logo) ---- */
+const ICONS = {
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>',
+  folder:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>',
+  calendar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>',
+  doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9 13h6M9 17h6"/></svg>',
+  chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-7"/><path d="M2 20h20"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>',
+  eye:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>',
+  eyeOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A11 11 0 0112 19c-7 0-11-7-11-7a20.4 20.4 0 015.1-5.6M9.9 4.2A9.7 9.7 0 0112 4c7 0 11 7 11 7a20.6 20.6 0 01-3 3.9M14.1 14.1a3 3 0 10-4.2-4.2"/><path d="M1 1l22 22"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>',
+  clipboard:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M9 11h6M9 15h6"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>',
+  image:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>',
+  empty:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M8 14h2"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13"/><path d="M10 11v6M14 11v6"/></svg>'
+};
+function icon(name, size){ return `<span class="ic" style="--ic-size:${size||18}px;">${ICONS[name]||''}</span>`; }
+
+let DB = {guards:[], admins:[], months:[], exams:[], questions:[], attempts:[]};
+let S = { screen:'home' }; // session-level UI state
+let SESSION = JSON.parse(localStorage.getItem('ssms_session_v1')||'null'); // {role, mobile}
+
+function setSession(sess){ SESSION = sess; localStorage.setItem('ssms_session_v1', JSON.stringify(sess)); }
+function clearSession(){ SESSION = null; localStorage.removeItem('ssms_session_v1'); HISTORY = []; }
+
+/* ---- navigation history, for the top-left Back button ---- */
+let HISTORY = [];
+function go(screen, extra){
+  if(S && S.screen) HISTORY.push(S);
+  S = Object.assign({screen}, extra||{});
+  window.scrollTo({top:0,behavior:'instant'});
+  render();
+}
+function goBack(){
+  if(HISTORY.length===0) return;
+  S = HISTORY.pop();
+  window.scrollTo({top:0,behavior:'instant'});
+  render();
+}
+function patch(extra){ S = Object.assign({}, S, extra); render(); }
+/* like go(), but stays on the same top-level screen while drilling into a
+   sub-view (e.g. admin: months -> month detail -> question editor). Pushes
+   the current state onto HISTORY so the topbar Back button steps back one
+   sub-view at a time instead of jumping straight out to the login page. */
+function goPush(extra){
+  HISTORY.push(S);
+  S = Object.assign({}, S, extra);
+  window.scrollTo({top:0,behavior:'instant'});
+  render();
+}
+
+function findGuard(mobile){ return DB.guards.find(g=>g.mobile===mobile); }
+function findAdmin(mobile){ return DB.admins.find(a=>a.mobile===mobile); }
+function monthsSorted(){
+  return DB.months.slice().sort((a,b)=>{
+    const ay = a.year!=null?a.year:9999, am = a.monthNum!=null?a.monthNum:0;
+    const by = b.year!=null?b.year:9999, bm = b.monthNum!=null?b.monthNum:0;
+    if(ay!==by) return ay-by;
+    if(am!==bm) return am-bm;
+    return a.createdAt-b.createdAt;
+  });
+}
+function examsForMonth(monthId){ return DB.exams.filter(e=>e.monthId===monthId).sort((a,b)=>a.createdAt-b.createdAt); }
+function questionsForExam(examId){ return DB.questions.filter(q=>q.examId===examId).sort((a,b)=>a.order-b.order); }
+/* Security-person side must only ever see questions the admin has explicitly
+   marked "Done" (published). Questions created before this feature existed
+   have no `published` field stored — default those to visible so nothing
+   that was already live to guards suddenly disappears. */
+function isQPublished(q){ return q.published!==undefined ? !!q.published : true; }
+function publishedQuestionsForExam(examId){ return questionsForExam(examId).filter(isQPublished); }
+function attemptsFor(guardMobile, examId){ return DB.attempts.filter(a=>a.guardMobile===guardMobile && a.examId===examId).sort((a,b)=>b.submittedAt-a.submittedAt); }
+function latestAttempt(guardMobile, examId){ const l = attemptsFor(guardMobile, examId); return l[0]||null; }
+function allAttemptsForGuard(mobile){ return DB.attempts.filter(a=>a.guardMobile===mobile).sort((a,b)=>b.submittedAt-a.submittedAt); }
+function examById(id){ return DB.exams.find(e=>e.id===id); }
+function monthById(id){ return DB.months.find(m=>m.id===id); }
+
+/* ---- exam name headline (security-person side): controlled by admin's
+   "Exam name (English)" / "Exam name (Hindi)" checkboxes. Older exams saved
+   before this feature had no flags stored, so undefined defaults to true on
+   both so their headline keeps showing exactly as it did before. ---- */
+function examShowFlags(ex){
+  return {
+    en: ex.showNameEn!==undefined ? !!ex.showNameEn : true,
+    hi: ex.showNameHi!==undefined ? !!ex.showNameHi : true
+  };
+}
+function examHeadlinePlain(ex){
+  const f = examShowFlags(ex);
+  if(f.en && f.hi) return ex.nameEn + ' / ' + ex.nameHi;
+  if(f.en) return ex.nameEn;
+  if(f.hi) return ex.nameHi;
+  return ex.nameEn;
+}
+function examHeadlineHtml(ex){
+  const f = examShowFlags(ex);
+  if(f.en && f.hi) return `${esc(ex.nameEn)} <span style="color:var(--muted);font-weight:500;">/ ${esc(ex.nameHi)}</span>`;
+  if(f.en) return esc(ex.nameEn);
+  if(f.hi) return esc(ex.nameHi);
+  return esc(ex.nameEn);
+}
+
+/* ============ RENDER ROOT ============ */
+const SECURE_SCREENS = ['guard-exam-run','guard-review'];
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = topbarHtml() + '<main><div class="wrap" id="mainwrap"></div></main>' + footerHtml();
+  const mount = document.getElementById('mainwrap');
+  mount.innerHTML = renderScreen();
+  bindGlobal();
+  bindScreen();
+  document.body.classList.toggle('secure-mode', SECURE_SCREENS.includes(S.screen));
+}
+
+/* ============ EXAM SECURITY (no-copy / screenshot deterrent) ============
+   Note: browsers cannot truly block OS-level screenshots/screen recording —
+   this is a best-effort deterrent (disables selection/copy/right-click,
+   blocks common save/print/devtools shortcuts, and blurs the screen when the
+   tab/window loses focus, which catches most snipping-tool / screen-record
+   attempts since they take focus away from the browser). */
+(function setupExamSecurity(){
+  const isSecure = ()=> document.body.classList.contains('secure-mode');
+  document.addEventListener('contextmenu', e=>{ if(isSecure()) e.preventDefault(); });
+  document.addEventListener('selectstart', e=>{ if(isSecure()) e.preventDefault(); });
+  document.addEventListener('dragstart', e=>{ if(isSecure()) e.preventDefault(); });
+  ['copy','cut','paste'].forEach(evt=>{
+    document.addEventListener(evt, e=>{ if(isSecure()) e.preventDefault(); });
+  });
+  document.addEventListener('keydown', e=>{
+    if(!isSecure()) return;
+    const k = e.key;
+    const blockedCombo =
+      ((e.ctrlKey||e.metaKey) && ['c','x','u','s','p'].includes((k||'').toLowerCase())) ||
+      ((e.ctrlKey||e.metaKey) && e.shiftKey && ['i','j','c'].includes((k||'').toLowerCase())) ||
+      k==='PrintScreen' || k==='F12';
+    if(blockedCombo) e.preventDefault();
+  });
+  window.addEventListener('blur', ()=>{ if(isSecure()) document.body.classList.add('secure-blurred'); });
+  document.addEventListener('visibilitychange', ()=>{
+    if(isSecure() && document.hidden) document.body.classList.add('secure-blurred');
+  });
+  window.addEventListener('focus', ()=>{ document.body.classList.remove('secure-blurred'); });
+})();
+
+function topbarHtml(){
+  let right = '';
+  if(SESSION && SESSION.role==='guard'){
+    const g = findGuard(SESSION.mobile);
+    if(g){
+      right = `<div class="session-chip">
+        <div class="who"><b>${esc(g.name)}</b><span>${esc(g.gatePass)} · ${esc(g.post)}</span></div>
+        <button class="btn btn-ghost btn-sm" data-act="logout">Logout</button>
+      </div>`;
+    }
+  } else if(SESSION && SESSION.role==='admin'){
+    right = `<div class="session-chip">
+      <div class="who"><b>${esc(SESSION.name||'Admin')}</b><span>ADMIN · ${esc(SESSION.mobile)}</span></div>
+      <button class="btn btn-ghost btn-sm" data-act="logout">Logout</button>
+    </div>`;
+  } else {
+    right = `<button class="btn btn-ghost btn-sm" data-act="home">Home</button>`;
+  }
+  const backBtn = HISTORY.length>0 ? `<button class="btn btn-ghost btn-sm" data-act="back" title="Back to previous page" style="flex-shrink:0;">← Back</button>` : '';
+  return `<div class="topbar"><div class="topbar-inner">
+    <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+      ${backBtn}
+      <div class="brand" style="cursor:pointer" data-act="home"><span class="brand-icon">${icon('shield',15)}</span><div>VSES<small>Vedanta Security Examination System</small></div></div>
+    </div>
+    ${right}
+  </div></div>`;
+}
+function footerHtml(){
+  return `<footer class="mini">Internal training &amp; assessment tool · demo build</footer>`;
+}
+
+function bindGlobal(){
+  document.querySelectorAll('[data-act="home"]').forEach(el=>el.addEventListener('click',()=>{ HISTORY=[]; go('home'); }));
+  document.querySelectorAll('[data-act="logout"]').forEach(el=>el.addEventListener('click',()=>{ clearSession(); go('home'); }));
+  document.querySelectorAll('[data-act="back"]').forEach(el=>el.addEventListener('click',goBack));
+}
+
+/* ============ SCREEN ROUTER ============ */
+function renderScreen(){
+  switch(S.screen){
+    case 'home': return screenHome();
+    case 'guard-auth': return screenGuardAuth();
+    case 'guard-dashboard': return screenGuardDashboard();
+    case 'guard-month': return screenGuardMonth();
+    case 'guard-exam-lang': return screenExamLang();
+    case 'guard-exam-run': return screenExamRun();
+    case 'guard-result': return screenResult();
+    case 'guard-review': return screenReview('guard');
+    case 'guard-myexams': return screenMyExams();
+    case 'admin-auth': return screenAdminAuth();
+    case 'admin-dashboard': return screenAdminDashboard();
+    case 'admin-review': return screenReview('admin');
+    default: return screenHome();
+  }
+}
+function bindScreen(){
+  switch(S.screen){
+    case 'home': return bindHome();
+    case 'guard-auth': return bindGuardAuth();
+    case 'guard-dashboard': return bindGuardDashboard();
+    case 'guard-month': return bindGuardMonth();
+    case 'guard-exam-lang': return bindExamLang();
+    case 'guard-exam-run': return bindExamRun();
+    case 'guard-result': return bindResult();
+    case 'guard-review': return bindReview();
+    case 'guard-myexams': return bindMyExams();
+    case 'admin-auth': return bindAdminAuth();
+    case 'admin-dashboard': return bindAdminDashboard();
+    case 'admin-review': return bindReview();
+  }
+}
+
+/* ============ HOME ============ */
+function screenHome(){
+  return `
+  <div class="hero">
+    <h1>Vedanta Security Exam Portal</h1>
+    <p>Monthly security assessments for control-room staff. Register once with your company mobile number, then take each month's exams from your phone.</p>
+    <div class="role-grid">
+      <div class="role-card" data-go="guard"><div class="icon">${icon('shield',20)}</div><h3>Security Personnel</h3><p>Register or log in with your mobile number to take this month's exams.</p></div>
+      <div class="role-card" data-go="admin"><div class="icon">${icon('folder',20)}</div><h3>Admin</h3><p>Create months, exam sections and questions, and review everyone's results.</p></div>
+    </div>
+  </div>`;
+}
+function bindHome(){
+  document.querySelectorAll('.role-card').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const r = el.getAttribute('data-go');
+      go(r==='guard'?'guard-auth':'admin-auth', {authTab: r==='guard' && DB.guards.length===0 ? 'register' : 'login'});
+    });
+  });
+}
+
+/* ============ GUARD AUTH ============ */
+function screenGuardAuth(){
+  const tab = S.authTab || 'login';
+  return `
+  <div class="wrap-narrow">
+  <div class="card">
+    <div class="panel-head"><div><h2>Security Personnel</h2><p>Log in with your registered mobile number and PIN, or register the first time.</p></div></div>
+    <div class="tabs">
+      <div class="tab ${tab==='login'?'active':''}" data-tab="login">Login</div>
+      <div class="tab ${tab==='register'?'active':''}" data-tab="register">Register (first time)</div>
+    </div>
+    ${S.formError?`<div class="error-box">${esc(S.formError)}</div>`:''}
+    ${tab==='login' ? `
+      <form id="loginForm">
+        <div class="field"><label>Registered mobile number</label><input type="tel" name="mobile" maxlength="10" inputmode="numeric" placeholder="10-digit mobile number" required></div>
+        <div class="field"><label>4-digit PIN</label><div class="pw-wrap"><input type="password" name="pin" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="••••" required><button type="button" class="pw-eye" data-pwtoggle>${icon('eye',17)}</button></div></div>
+        <button class="btn btn-primary btn-block" type="submit">Login</button>
+      </form>
+    ` : `
+      <form id="regForm">
+        <div class="field"><label>Full name</label><input type="text" name="name" id="regNameInput" placeholder="As per company records" required></div>
+        <div class="field-row">
+          <div class="field"><label>Mobile number (company registered)</label><input type="tel" name="mobile" maxlength="10" inputmode="numeric" placeholder="10-digit mobile number" required></div>
+          <div class="field"><label>Gate pass number</label><input type="text" name="gatePass" placeholder="e.g. GP-1042" required></div>
+        </div>
+        <div class="field"><label>Post</label>
+          <select name="post" required><option value="">Select post</option>${POSTS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Set a 4-digit PIN</label><div class="pw-wrap"><input type="password" name="pin" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="••••" required><button type="button" class="pw-eye" data-pwtoggle>${icon('eye',17)}</button></div></div>
+          <div class="field"><label>Confirm PIN</label><div class="pw-wrap"><input type="password" name="pin2" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="••••" required><button type="button" class="pw-eye" data-pwtoggle>${icon('eye',17)}</button></div></div>
+        </div>
+        <div class="field hint" style="margin-top:-6px;">One-time registration. Next time, log in with your mobile number + this PIN — remember it, and avoid writing it down anywhere.</div>
+        <button class="btn btn-primary btn-block" type="submit" style="margin-top:6px;">Register &amp; continue</button>
+      </form>
+    `}
+  </div>
+  </div>`;
+}
+function autoNameCase(str){
+  return str.replace(/\S+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+function bindGuardAuth(){
+  document.querySelectorAll('.tab').forEach(el=>el.addEventListener('click',()=>patch({authTab: el.getAttribute('data-tab'), formError:null})));
+  document.querySelectorAll('[data-pwtoggle]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const inp = btn.previousElementSibling;
+      const showing = inp.type==='text';
+      inp.type = showing?'password':'text';
+      btn.innerHTML = icon(showing?'eye':'eyeOff',17);
+    });
+  });
+  const nameInp = document.getElementById('regNameInput');
+  if(nameInp) nameInp.addEventListener('input',()=>{
+    const pos = nameInp.selectionStart;
+    const before = nameInp.value;
+    nameInp.value = autoNameCase(before);
+    if(pos!=null) nameInp.setSelectionRange(pos,pos);
+  });
+  const lf = document.getElementById('loginForm');
+  if(lf) lf.addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(lf);
+    const mobile = fd.get('mobile').trim();
+    const pin = fd.get('pin');
+    if(!/^\d{4}$/.test(pin)){ patch({formError:'PIN must be 4 digits.'}); return; }
+    withBusy(lf, async ()=>{
+      const {data, error} = await sb.rpc('verify_guard_login', {p_mobile: mobile, p_pin: pin});
+      if(error) throw error;
+      if(!data || data.length===0){ patch({formError:'Incorrect mobile number or PIN.'}); return; }
+      const row = data[0];
+      const guard = { mobile: row.mobile, name: row.name, gatePass: row.gate_pass, post: row.post, seenExams: row.seen_exams||[] };
+      const existing = findGuard(mobile);
+      if(existing) Object.assign(existing, guard); else DB.guards.push(guard);
+      setSession({role:'guard', mobile, name: guard.name, gatePass: guard.gatePass, post: guard.post});
+      go('guard-dashboard');
+    });
+  });
+  const rf = document.getElementById('regForm');
+  if(rf) rf.addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(rf);
+    const mobile = fd.get('mobile').trim();
+    const gatePass = fd.get('gatePass').trim();
+    const pin = fd.get('pin');
+    const pin2 = fd.get('pin2');
+    if(!/^\d{10}$/.test(mobile)){ patch({formError:'Enter a valid 10-digit mobile number.'}); return; }
+    if(!/^\d{4}$/.test(pin)){ patch({formError:'PIN must be 4 digits.'}); return; }
+    if(pin!==pin2){ patch({formError:'The two PINs do not match.'}); return; }
+    withBusy(rf, async ()=>{
+      const {data, error} = await sb.rpc('register_guard', {
+        p_mobile: mobile, p_name: fd.get('name').trim(), p_gate_pass: gatePass, p_post: fd.get('post'), p_pin: pin
+      });
+      if(error){
+        if(String(error.message||'').includes('MOBILE_EXISTS')){ patch({formError:'This mobile number is already registered. Please log in.', authTab:'login'}); return; }
+        if(String(error.message||'').includes('GATEPASS_EXISTS')){ patch({formError:'This gate pass number is already registered.'}); return; }
+        throw error;
+      }
+      const row = data[0];
+      const guard = { mobile: row.mobile, name: row.name, gatePass: row.gate_pass, post: row.post, seenExams: [] };
+      DB.guards.push(guard);
+      setSession({role:'guard', mobile, name: guard.name, gatePass: guard.gatePass, post: guard.post});
+      go('guard-dashboard');
+    });
+  });
+}
+
+/* ============ GUARD DASHBOARD ============ */
+function screenGuardDashboard(){
+  const months = monthsSorted();
+  const g = findGuard(SESSION.mobile);
+  const seen = (g && g.seenExams) || [];
+  return `
+  <div class="panel-head"><div><h2>Select month</h2><p>Choose a month to see its exam sections.</p></div>
+    <button class="btn btn-ghost btn-sm" data-act="myexams">${icon('doc',15)} My previous exams</button>
+  </div>
+  ${months.length===0 ? emptyState('empty','No month has been set yet','The admin will add this month\'s exams soon. Please check back later.') :
+  `<div class="grid">${months.map(m=>{
+    const exams = examsForMonth(m.id);
+    const unseenCount = exams.filter(ex=>!seen.includes(ex.id)).length;
+    return `<div class="tile" data-month="${m.id}">
+      <div class="tile-top"><div class="month-icon">${icon('calendar',17)}</div>${unseenCount>0?`<div class="notif-badge">${icon('bell',13)} ${unseenCount}</div>`:''}</div>
+      <h3>${esc(m.label)}</h3>
+      <div class="sub">${exams.length} exam section${exams.length===1?'':'s'}</div>
+    </div>`;
+  }).join('')}</div>`}
+  `;
+}
+function bindGuardDashboard(){
+  const btn = document.querySelector('[data-act="myexams"]');
+  if(btn) btn.addEventListener('click',()=>go('guard-myexams'));
+  document.querySelectorAll('.tile[data-month]').forEach(el=>el.addEventListener('click',()=>{
+    const monthId = el.getAttribute('data-month');
+    const g = findGuard(SESSION.mobile);
+    if(g){
+      const exIds = examsForMonth(monthId).map(e=>e.id);
+      const newSeen = Array.from(new Set([...(g.seenExams||[]), ...exIds]));
+      if(newSeen.length !== (g.seenExams||[]).length){
+        g.seenExams = newSeen;
+        sb.rpc('mark_exams_seen', {p_mobile: g.mobile, p_exam_ids: exIds}).then(({error})=>{ if(error) console.error(error); });
+      }
+    }
+    go('guard-month',{monthId});
+  }));
+}
+function emptyState(iconName,title,sub){
+  return `<div class="empty"><div class="icon" style="color:var(--muted-2);">${icon(iconName,34)}</div><h3 style="margin:0 0 6px;color:var(--text);font-size:15px;">${esc(title)}</h3><p style="margin:0;">${esc(sub)}</p></div>`;
+}
+
+/* ============ GUARD MONTH -> EXAM LIST ============ */
+function screenGuardMonth(){
+  const m = monthById(S.monthId);
+  if(!m) return emptyState('warn','Month not found','Go back to the dashboard.');
+  const exams = examsForMonth(m.id);
+  return `
+  <div class="crumb"><a data-back="dash">Months</a> <span>/</span> <span>${esc(m.label)}</span></div>
+  <div class="panel-head"><div><h2>${esc(m.label)}</h2><p>This month's exam sections are listed below.</p></div></div>
+  ${exams.length===0 ? emptyState('doc','No exam in this month yet','Exam sections will appear here once the admin creates them.') :
+  `<div class="grid">${exams.map(ex=>{
+    const att = latestAttempt(SESSION.mobile, ex.id);
+    const qcount = publishedQuestionsForExam(ex.id).length;
+    let badge, sub;
+    if(!att){ badge = `<span class="badge badge-open">Not attempted</span>`; sub = `${qcount} questions`; }
+    else if(att.approvedRetake){ badge = `<span class="badge badge-open">Re-attempt allowed</span>`; sub = `Last score: ${att.score}/${att.total}`; }
+    else { badge = `<span class="badge badge-locked">Locked</span>`; sub = `Score: ${att.score}/${att.total}`; }
+    const dropped = ex.createdAt ? `Dropped on ${fmtDateTime(ex.createdAt).date}` : '';
+    return `<div class="tile" data-exam="${ex.id}">
+      <div class="tile-top"><div class="month-icon">${icon('doc',17)}</div>${badge}</div>
+      <h3>${examHeadlineHtml(ex)}</h3>
+      <div class="sub">${sub}${dropped?` · ${dropped}`:''}</div>
+    </div>`;
+  }).join('')}</div>`}
+  `;
+}
+function bindGuardMonth(){
+  const b = document.querySelector('[data-back="dash"]'); if(b) b.addEventListener('click',()=>go('guard-dashboard'));
+  document.querySelectorAll('.tile[data-exam]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const examId = el.getAttribute('data-exam');
+      const att = latestAttempt(SESSION.mobile, examId);
+      if(att && !att.approvedRetake){
+        go('guard-review', {attemptId: att.id, from:'guard-month', monthId:S.monthId});
+      } else {
+        const ex = examById(examId);
+        if(ex && ex.qLang && ex.qLang!=='both'){
+          const qs = publishedQuestionsForExam(examId);
+          go('guard-exam-run',{examId, monthId:S.monthId, lang:ex.qLang, answers:new Array(qs.length).fill(null)});
+        } else {
+          go('guard-exam-lang', {examId, monthId:S.monthId});
+        }
+      }
+    });
+  });
+}
+
+/* ============ EXAM LANGUAGE SELECT ============ */
+function screenExamLang(){
+  const ex = examById(S.examId);
+  const qs = publishedQuestionsForExam(ex.id);
+  return `
+  <div class="wrap-narrow">
+  <div class="crumb"><a data-back="month">${esc(monthById(S.monthId).label)}</a> <span>/</span> <span>${esc(examHeadlinePlain(ex))}</span></div>
+  <div class="card" style="text-align:center;">
+    <h2 style="margin-top:0;">${examHeadlineHtml(ex)}</h2>
+    <p style="color:var(--muted);font-size:13.5px;">${qs.length} questions · 1 mark each · Total ${qs.length} marks<br>All questions are compulsory. You can attempt this exam once until it is re-approved.</p>
+    <div class="divider"></div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Choose exam language / भाषा चुनें</p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button class="btn btn-primary" data-lang="en" style="min-width:130px;">English</button>
+      <button class="btn btn-primary" data-lang="hi" style="min-width:130px;">हिन्दी</button>
+    </div>
+  </div>
+  </div>`;
+}
+function bindExamLang(){
+  const b = document.querySelector('[data-back="month"]'); if(b) b.addEventListener('click',()=>go('guard-month',{monthId:S.monthId}));
+  document.querySelectorAll('[data-lang]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const qs = publishedQuestionsForExam(S.examId);
+      go('guard-exam-run',{examId:S.examId, monthId:S.monthId, lang:el.getAttribute('data-lang'), answers:new Array(qs.length).fill(null)});
+    });
+  });
+}
+
+/* ============ EXAM RUNNER ============ */
+function screenExamRun(){
+  const ex = examById(S.examId);
+  const qs = publishedQuestionsForExam(ex.id);
+  const lang = S.lang;
+  const answered = S.answers.filter(a=>a!==null).length;
+  const showToggle = !ex.qLang || ex.qLang==='both';
+  return `
+  <div class="exam-meta">
+    <div><h2 style="margin:0;">${examHeadlineHtml(ex)}</h2><p style="margin:2px 0 0;color:var(--muted);font-size:13px;">${answered} / ${qs.length} answered</p></div>
+    ${showToggle?`<div class="lang-toggle">
+      <button class="${lang==='en'?'active':''}" data-switch-lang="en">EN</button>
+      <button class="${lang==='hi'?'active':''}" data-switch-lang="hi">हिं</button>
+    </div>`:''}
+  </div>
+  <div class="progress-track"><div class="progress-fill" style="width:${(answered/qs.length*100)||0}%"></div></div>
+  ${qs.map((q,i)=>{
+    const isImg = q.optType==='image';
+    return `<div class="qcard ${S.answers[i]!==null?'answered':''}">
+      <div class="qtext"><span class="qnum">${i+1}</span><span lang-hi>${esc(lang==='hi'?q.textHi:q.textEn)}</span></div>
+      <div class="opt-list ${isImg?'opt-images':''}">
+        ${q.options.map((opt,oi)=>`
+          <div class="opt ${S.answers[i]===oi?'selected':''}" data-qi="${i}" data-oi="${oi}">
+            <span class="letter">${letter(oi)}</span>
+            ${isImg ? `<img src="${opt.img}" alt="option ${letter(oi)}">` : `<span lang-hi>${esc(lang==='hi'?opt.hi:opt.en)}</span>`}
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('')}
+  <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+    <button class="btn btn-primary" id="submitExam" ${answered<qs.length?'disabled':''}>Submit exam${answered<qs.length?` (${qs.length-answered} left)`:''}</button>
+  </div>
+  `;
+}
+function bindExamRun(){
+  document.querySelectorAll('[data-switch-lang]').forEach(el=>el.addEventListener('click',()=>patch({lang:el.getAttribute('data-switch-lang')})));
+  document.querySelectorAll('.opt[data-qi]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const qi = parseInt(el.getAttribute('data-qi'),10), oi = parseInt(el.getAttribute('data-oi'),10);
+      const answers = S.answers.slice(); answers[qi]=oi;
+      patch({answers});
+    });
+  });
+  const sub = document.getElementById('submitExam');
+  if(sub) sub.addEventListener('click',()=>{
+    if(sub.disabled) return;
+    sub.disabled = true;
+    const qs = publishedQuestionsForExam(S.examId);
+    let score = 0;
+    qs.forEach((q,i)=>{ if(S.answers[i]===q.correct) score++; });
+    const attempt = {
+      id: uid('att'), guardMobile: SESSION.mobile, examId: S.examId, lang: S.lang,
+      answers: S.answers.slice(), score, total: qs.length, submittedAt: Date.now(), approvedRetake:false
+    };
+    sub.textContent = 'Submitting…';
+    sb.from('attempts').insert(toSnake(attempt)).then(({error})=>{
+      if(error){ console.error(error); alert('Exam could not be submitted. Please check your internet connection and try again.'); sub.disabled=false; sub.textContent='Submit exam'; return; }
+      DB.attempts.push(attempt);
+      go('guard-result', {attemptId: attempt.id, monthId:S.monthId});
+    });
+  });
+}
+
+/* ============ RESULT ============ */
+function screenResult(){
+  const att = DB.attempts.find(a=>a.id===S.attemptId);
+  const ex = examById(att.examId);
+  const pct = Math.round(att.score/att.total*100);
+  const color = pct>=60?'var(--green)':pct>=40?'var(--amber)':'var(--red)';
+  return `
+  <div class="wrap-narrow">
+  <div class="card result-hero">
+    <div class="score-ring" style="border-color:${color};">
+      <div class="num" style="color:${color};">${att.score}</div>
+      <div class="den">/ ${att.total} marks</div>
+    </div>
+    <h2 style="margin:0 0 6px;">${examHeadlineHtml(ex)} — submitted</h2>
+    <p style="color:var(--muted);font-size:13.5px;">Your score in this exam is ${att.score} out of ${att.total}. This exam is now locked until the admin approves a re-attempt.</p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap;">
+      <button class="btn btn-primary" data-act2="review">View your answers</button>
+      <button class="btn" data-act2="back">Back to month</button>
+    </div>
+  </div>
+  </div>`;
+}
+function bindResult(){
+  document.querySelector('[data-act2="back"]').addEventListener('click',()=>go('guard-month',{monthId:S.monthId}));
+  document.querySelector('[data-act2="review"]').addEventListener('click',()=>go('guard-review',{attemptId:S.attemptId, from:'guard-month', monthId:S.monthId}));
+}
+
+/* ============ MY EXAMS (guard) ============ */
+function screenMyExams(){
+  const list = allAttemptsForGuard(SESSION.mobile);
+  return `
+  <div class="crumb"><a data-back="dash">Dashboard</a> <span>/</span> <span>My previous exams</span></div>
+  <div class="panel-head"><div><h2>My previous exams</h2><p>All the exams you have attempted are listed here.</p></div></div>
+  ${list.length===0 ? emptyState('doc','No exam attempted yet','Select a month to start taking an exam.') :
+  `<div class="table-wrap"><table><thead><tr><th>Exam</th><th>Month</th><th>Date</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>
+    ${list.map(a=>{
+      const ex = examById(a.examId); const m = monthById(ex.monthId); const dt = fmtDateTime(a.submittedAt);
+      return `<tr><td>${esc(examHeadlinePlain(ex))}</td><td>${esc(m?m.label:'-')}</td><td class="mono">${dt.date} ${dt.time}</td><td class="mono">${a.score}/${a.total}</td>
+      <td>${a.approvedRetake?'<span class="badge badge-open">Re-attempt open</span>':'<span class="badge badge-locked">Locked</span>'}</td>
+      <td><button class="btn btn-sm" data-view="${a.id}">View</button></td></tr>`;
+    }).join('')}
+  </tbody></table></div>`}
+  `;
+}
+function bindMyExams(){
+  const b = document.querySelector('[data-back="dash"]'); if(b) b.addEventListener('click',()=>go('guard-dashboard'));
+  document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>go('guard-review',{attemptId:el.getAttribute('data-view'), from:'guard-myexams'})));
+}
+
+/* ============ REVIEW (shared by guard + admin) ============ */
+function screenReview(mode){
+  const att = DB.attempts.find(a=>a.id===S.attemptId);
+  if(!att) return emptyState('warn','Attempt not found','');
+  const ex = examById(att.examId);
+  const qs = questionsForExam(ex.id);
+  const g = findGuard(att.guardMobile);
+  const dt = fmtDateTime(att.submittedAt);
+  const lang = S.reviewLang || att.lang || 'en';
+  const showToggle = !ex.qLang || ex.qLang==='both';
+  const crumbName = mode==='admin' ? ex.nameEn : examHeadlinePlain(ex);
+  const headline = mode==='admin'
+    ? `${esc(ex.nameEn)} <span style="color:var(--muted);font-weight:500;">/ ${esc(ex.nameHi)}</span>`
+    : examHeadlineHtml(ex);
+  return `
+  <div class="crumb"><a data-back="1">${mode==='admin'?'Back':'Back'}</a> <span>/</span> <span>Review · ${esc(crumbName)}</span></div>
+  <div class="panel-head">
+    <div>
+      <h2>${headline}${ex.examType?` <span class="chip">${esc(ex.examType)}</span>`:''}</h2>
+      <p>${mode==='admin'?`<b style="color:var(--text)">${esc(g?g.name:att.guardMobile)}</b> · ${esc(g?g.gatePass:'')} · ${esc(g?g.post:'')} · `:''}${dt.date} ${dt.time} · Score ${att.score}/${att.total}</p>
+    </div>
+    ${showToggle?`<div class="lang-toggle">
+      <button class="${lang==='en'?'active':''}" data-rlang="en">EN</button>
+      <button class="${lang==='hi'?'active':''}" data-rlang="hi">हिं</button>
+    </div>`:''}
+  </div>
+  ${qs.map((q,i)=>{
+    const isImg = q.optType==='image';
+    const sel = att.answers[i];
+    return `<div class="qcard">
+      <div class="qtext"><span class="qnum">${i+1}</span><span lang-hi>${esc(lang==='hi'?q.textHi:q.textEn)}</span></div>
+      <div class="opt-list ${isImg?'opt-images':''}">
+        ${q.options.map((opt,oi)=>{
+          let cls='';
+          if(mode==='admin'){
+            if(oi===q.correct) cls='correct';
+            else if(oi===sel && sel!==q.correct) cls='wrong';
+          } else {
+            /* Security person: only their own selected option should show green/red. If the wrong option is selected, the correct answer should not be shown. */
+            if(oi===sel) cls = (sel===q.correct) ? 'correct' : 'wrong';
+          }
+          return `<div class="opt ${cls}">
+            <span class="letter">${letter(oi)}</span>
+            ${isImg?`<img src="${opt.img}" alt="">`:`<span lang-hi>${esc(lang==='hi'?opt.hi:opt.en)}</span>`}
+            ${oi===sel?'<span style="margin-left:auto;font-size:11px;color:var(--muted);">your answer</span>':''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('')}
+  `;
+}
+function bindReview(){
+  document.querySelector('[data-back]').addEventListener('click',()=>{
+    if(S.from==='guard-month') go('guard-month',{monthId:S.monthId});
+    else if(S.from==='guard-myexams') go('guard-myexams');
+    else if(SESSION && SESSION.role==='admin') go('admin-dashboard', {adminTab: S.adminTab||'results', adminExamId:S.adminExamId, adminMonthId:S.adminMonthId, searchQuery:S.searchQuery});
+    else go('home');
+  });
+  document.querySelectorAll('[data-rlang]').forEach(el=>el.addEventListener('click',()=>patch({reviewLang:el.getAttribute('data-rlang')})));
+}
+
+/* ============ ADMIN AUTH ============ */
+function screenAdminAuth(){
+  return `
+  <div class="wrap-narrow">
+  <div class="card">
+    <div class="panel-head"><div><h2>Admin</h2><p>Log in with your admin mobile number and password.</p></div></div>
+    ${S.formError?`<div class="error-box">${esc(S.formError)}</div>`:''}
+    <div class="info-box">New admin accounts can only be created by the site owner through the Supabase dashboard — no one can create an admin account from this page.</div>
+    <form id="adminLoginForm">
+      <div class="field"><label>Admin mobile number</label><input type="tel" name="mobile" maxlength="10" inputmode="numeric" required></div>
+      <div class="field"><label>Password</label><div class="pw-wrap"><input type="password" name="password" required><button type="button" class="pw-eye" data-pwtoggle>${icon('eye',17)}</button></div></div>
+      <button class="btn btn-primary btn-block" type="submit">Login</button>
+    </form>
+  </div>
+  </div>`;
+}
+function bindAdminAuth(){
+  document.querySelectorAll('.tab').forEach(el=>el.addEventListener('click',()=>patch({authTab:el.getAttribute('data-tab'), formError:null})));
+  document.querySelectorAll('[data-pwtoggle]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const inp = btn.previousElementSibling;
+      const showing = inp.type==='text';
+      inp.type = showing?'password':'text';
+      btn.innerHTML = icon(showing?'eye':'eyeOff',17);
+    });
+  });
+  const lf = document.getElementById('adminLoginForm');
+  if(lf) lf.addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(lf); const mobile = fd.get('mobile').trim(); const pw = fd.get('password');
+    withBusy(lf, async ()=>{
+      const {data, error} = await sb.rpc('verify_admin_login', {p_mobile: mobile, p_password: pw});
+      if(error) throw error;
+      if(!data || data.length===0){ patch({formError:'Incorrect mobile number or password.'}); return; }
+      setSession({role:'admin', mobile, name: data[0].name});
+      go('admin-dashboard',{adminTab:'months'});
+    });
+  });
+}
+
+/* ============ ADMIN DASHBOARD ============ */
+function screenAdminDashboard(){
+  const tab = S.adminTab || 'months';
+  const nav = [
+    ['months',icon('calendar',15),'Months &amp; Exams'],
+    ['results',icon('chart',15),'Results'],
+    ['search',icon('search',15),'Search Security Person'],
+  ];
+  return `
+  <div class="admin-layout">
+    <div class="admin-nav">
+      ${nav.map(([id,ic,label])=>`<button class="${tab===id?'active':''}" data-navto="${id}">${ic} ${label}</button>`).join('')}
+    </div>
+    <div>${adminContent(tab)}</div>
+  </div>`;
+}
+function adminContent(tab){
+  if(tab==='months') return adminMonths();
+  if(tab==='exam') return adminExamQuestions();
+  if(tab==='results') return adminResults();
+  if(tab==='search') return adminSearch();
+  if(tab==='guardprofile') return adminGuardProfile();
+  return adminMonths();
+}
+function bindAdminDashboard(){
+  document.querySelectorAll('[data-navto]').forEach(el=>el.addEventListener('click',()=>{ resetQB(); goPush({adminTab:el.getAttribute('data-navto'), formError:null}); }));
+  bindAdminContent(S.adminTab||'months');
+}
+function bindAdminContent(tab){
+  if(tab==='months') return bindAdminMonths();
+  if(tab==='exam') return bindAdminExamQuestions();
+  if(tab==='results') return bindAdminResults();
+  if(tab==='search') return bindAdminSearch();
+  if(tab==='guardprofile') return bindAdminGuardProfile();
+}
+
+/* --- Admin: Months & Exams --- */
+function adminMonths(){
+  if(S.adminMonthId) return adminMonthDetail(S.adminMonthId);
+  const months = monthsSorted();
+  const now = new Date();
+  const defMonth = S.newMonthSel!=null ? S.newMonthSel : now.getMonth();
+  const defYear = S.newYearSel!=null ? S.newYearSel : now.getFullYear();
+  const yearOptions = [];
+  for(let y=now.getFullYear()-1; y<=now.getFullYear()+2; y++) yearOptions.push(y);
+  return `
+  <div class="card">
+    <div class="panel-head"><div><h2>Months</h2><p>Har month ke andar exam sections banayein.</p></div></div>
+    <form id="addMonthForm" style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:flex-end;">
+      <div class="field" style="margin-bottom:0;min-width:170px;">
+        <label>Month</label>
+        <select name="monthNum" id="monthNumSel">${MONTH_NAMES.map((mn,i)=>`<option value="${i}" ${i===defMonth?'selected':''}>${mn}</option>`).join('')}</select>
+      </div>
+      <div class="field" style="margin-bottom:0;min-width:120px;">
+        <label>Year</label>
+        <select name="yearNum" id="yearNumSel">${yearOptions.map(y=>`<option value="${y}" ${y===defYear?'selected':''}>${y}</option>`).join('')}</select>
+      </div>
+      <button class="btn btn-primary" type="submit">+ Add month</button>
+    </form>
+    ${months.length===0?emptyState('calendar','No month added yet','Add the first month from above.'):
+    months.map(m=>{
+      const exams = examsForMonth(m.id);
+      const added = m.createdAt ? ` · Added ${fmtDateTime(m.createdAt).date}` : '';
+      return `<div class="item-row"><div class="info"><b>${esc(m.label)}</b><span>${exams.length} exam section${exams.length===1?'':'s'}${added}</span></div>
+      <div class="actions"><button class="btn btn-sm" data-openmonth="${m.id}">Manage exams →</button>
+      <button class="btn btn-sm btn-danger" data-delmonth="${m.id}">Delete</button></div></div>`;
+    }).join('')}
+  </div>`;
+}
+function bindAdminMonths(){
+  const f = document.getElementById('addMonthForm');
+  const ms = document.getElementById('monthNumSel');
+  if(ms) ms.addEventListener('change',()=>{ S.newMonthSel = parseInt(ms.value,10); });
+  const ys = document.getElementById('yearNumSel');
+  if(ys) ys.addEventListener('change',()=>{ S.newYearSel = parseInt(ys.value,10); });
+  if(f) f.addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(f);
+    const monthNum = parseInt(fd.get('monthNum'),10);
+    const yearNum = parseInt(fd.get('yearNum'),10);
+    if(DB.months.some(m=>m.monthNum===monthNum && m.year===yearNum)){ alert('This month has already been added.'); return; }
+    const label = MONTH_NAMES[monthNum] + ' ' + yearNum;
+    const month = {id:uid('mo'), label, monthNum, year:yearNum, createdAt:Date.now()};
+    withBusy(f, async ()=>{
+      const {error} = await sb.from('months').insert(toSnake(month));
+      if(error) throw error;
+      DB.months.push(month);
+      S.newMonthSel = null; S.newYearSel = null;
+      patch({});
+    });
+  });
+  document.querySelectorAll('[data-openmonth]').forEach(el=>el.addEventListener('click',()=>goPush({adminMonthId:el.getAttribute('data-openmonth')})));
+  document.querySelectorAll('[data-delmonth]').forEach(el=>el.addEventListener('click',()=>{
+    if(!confirm('Delete this entire month? All its exam sections, questions and attempts will also be deleted.')) return;
+    const id = el.getAttribute('data-delmonth');
+    el.disabled = true; el.textContent = 'Deleting…';
+    sb.from('months').delete().eq('id', id).then(({error})=>{
+      if(error){ console.error(error); alert('Delete failed, please try again.'); el.disabled=false; el.textContent='Delete'; return; }
+      // cascade delete on the DB side already removed exams/questions/attempts under this month
+      const examIds = DB.exams.filter(e=>e.monthId===id).map(e=>e.id);
+      DB.exams = DB.exams.filter(e=>e.monthId!==id);
+      DB.questions = DB.questions.filter(q=>!examIds.includes(q.examId));
+      DB.attempts = DB.attempts.filter(a=>!examIds.includes(a.examId));
+      DB.months = DB.months.filter(m=>m.id!==id);
+      patch({});
+    });
+  }));
+}
+function adminMonthDetail(monthId){
+  const m = monthById(monthId);
+  const exams = examsForMonth(monthId);
+  return `
+  <div class="crumb"><a data-backmonths="1">Months</a> <span>/</span> <span>${esc(m.label)}</span></div>
+  <div class="card">
+    <div class="panel-head"><div><h2>${esc(m.label)}</h2><p>Exam sections for this month.</p></div></div>
+    <form id="addExamForm" style="margin-bottom:18px;">
+      <div class="field-row">
+        <div class="field">
+          <label>Exam name (English)</label>
+          <input type="text" name="nameEn" id="nameEnInput" placeholder="e.g. Fire Safety Exam">
+          <label style="display:flex;align-items:center;gap:6px;margin-top:7px;font-weight:500;color:var(--muted);cursor:pointer;">
+            <input type="checkbox" name="showNameEn" id="showNameEnChk" style="width:14px;height:14px;"> Security person site pr headline English me dikhayein
+          </label>
+        </div>
+        <div class="field">
+          <label>Exam name (Hindi)</label>
+          <input type="text" name="nameHi" id="nameHiInput" placeholder="e.g. अग्नि सुरक्षा परीक्षा" required>
+          <label style="display:flex;align-items:center;gap:6px;margin-top:7px;font-weight:500;color:var(--muted);cursor:pointer;">
+            <input type="checkbox" name="showNameHi" id="showNameHiChk" checked style="width:14px;height:14px;"> Security person site pr headline Hindi me dikhayein
+          </label>
+        </div>
+      </div>
+      <div class="field" style="max-width:260px;">
+        <label>Exam type</label>
+        <select name="examType" required>${EXAM_TYPES.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('')}</select>
+      </div>
+      <button class="btn btn-primary" type="submit">+ Add exam section</button>
+    </form>
+    ${exams.length===0?emptyState('doc','No exam in this month yet','Add the first exam section from above.'):
+    exams.map(ex=>{
+      const qc = questionsForExam(ex.id).length;
+      const dropped = ex.createdAt ? ` · Dropped on ${fmtDateTime(ex.createdAt).date} at ${fmtDateTime(ex.createdAt).time}` : '';
+      const typeChip = ex.examType ? `<span class="chip" style="margin-left:8px;">${esc(ex.examType)}</span>` : '';
+      const f2 = examShowFlags(ex);
+      const langChip = `<span class="chip" style="margin-left:8px;" title="Security person site pr headline">${f2.en&&f2.hi?'EN+HI':f2.en?'EN only':'HI only'}</span>`;
+      return `<div class="item-row"><div class="info"><b>${esc(ex.nameEn)} / ${esc(ex.nameHi)}${typeChip}${langChip}</b><span>${qc} question${qc===1?'':'s'}${dropped}</span></div>
+      <div class="actions"><button class="btn btn-sm" data-openexam="${ex.id}">Manage questions →</button>
+      <button class="btn btn-sm btn-danger" data-delexam="${ex.id}">Delete</button></div></div>`;
+    }).join('')}
+  </div>`;
+}
+function bindAdminMonthDetail(){
+  document.querySelector('[data-backmonths]').addEventListener('click',goBack);
+  const f = document.getElementById('addExamForm');
+  const nameEnInput = document.getElementById('nameEnInput');
+  const nameHiInput = document.getElementById('nameHiInput');
+  const showNameEnChk = document.getElementById('showNameEnChk');
+  const showNameHiChk = document.getElementById('showNameHiChk');
+  function syncNameRequired(){
+    if(nameEnInput) nameEnInput.required = !!(showNameEnChk && showNameEnChk.checked);
+    if(nameHiInput) nameHiInput.required = !!(showNameHiChk && showNameHiChk.checked);
+  }
+  syncNameRequired();
+  if(showNameEnChk) showNameEnChk.addEventListener('change', syncNameRequired);
+  if(showNameHiChk) showNameHiChk.addEventListener('change', syncNameRequired);
+  if(f) f.addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(f);
+    const showNameEn = fd.get('showNameEn')==='on';
+    const showNameHi = fd.get('showNameHi')==='on';
+    if(!showNameEn && !showNameHi){ alert('Select at least one headline checkbox (English or Hindi).'); return; }
+    if(showNameEn && !fd.get('nameEn').trim()){ alert('Exam name (English) is required because its checkbox is ticked.'); return; }
+    if(showNameHi && !fd.get('nameHi').trim()){ alert('Exam name (Hindi) is required because its checkbox is ticked.'); return; }
+    const exam = {id:uid('ex'), monthId:S.adminMonthId, nameEn:fd.get('nameEn').trim(), nameHi:fd.get('nameHi').trim(), examType:fd.get('examType'), qLang:'hi', showNameEn, showNameHi, createdAt:Date.now()};
+    withBusy(f, async ()=>{
+      const {error} = await sb.from('exams').insert(toSnake(exam));
+      if(error) throw error;
+      DB.exams.push(exam);
+      patch({});
+    });
+  });
+  document.querySelectorAll('[data-openexam]').forEach(el=>el.addEventListener('click',()=>goPush({adminTab:'exam', adminExamId:el.getAttribute('data-openexam')})));
+  document.querySelectorAll('[data-delexam]').forEach(el=>el.addEventListener('click',()=>{
+    if(!confirm('Delete this exam section and all its questions?')) return;
+    const id = el.getAttribute('data-delexam');
+    el.disabled = true; el.textContent = 'Deleting…';
+    sb.from('exams').delete().eq('id', id).then(({error})=>{
+      if(error){ console.error(error); alert('Delete failed, please try again.'); el.disabled=false; el.textContent='Delete'; return; }
+      DB.exams = DB.exams.filter(e=>e.id!==id);
+      DB.questions = DB.questions.filter(q=>q.examId!==id);
+      DB.attempts = DB.attempts.filter(a=>a.examId!==id);
+      patch({});
+    });
+  }));
+}
+
+/* --- Admin: Exam question editor --- */
+let QB_STATE = { editId:null, textEn:'', textHi:'', optType:'text', opts:[{hi:'',en:'',img:null},{hi:'',en:'',img:null},{hi:'',en:'',img:null},{hi:'',en:'',img:null}], correct:0 };
+function resetQB(){ QB_STATE = { editId:null, textEn:'', textHi:'', optType:'text', opts:[{hi:'',en:'',img:null},{hi:'',en:'',img:null},{hi:'',en:'',img:null},{hi:'',en:'',img:null}], correct:0 }; }
+function adminExamQuestions(){
+  const ex = examById(S.adminExamId);
+  if(!ex) return emptyState('warn','Exam not found','');
+  if(!ex.qLang) ex.qLang = 'both';
+  const m = monthById(ex.monthId);
+  const qs = questionsForExam(ex.id);
+  const qLang = ex.qLang;
+  const qLangHint = qLang==='hi'?'Fill in every question in Hindi only.':qLang==='en'?'Fill in every question in English only.':'Fill in both Hindi and English text for every question.';
+  return `
+  <div class="crumb-row">
+    <div class="crumb" style="margin-bottom:0;"><a data-backtomonth="${m.id}">${esc(m.label)}</a> <span>/</span> <span>${esc(ex.nameEn)}</span></div>
+    <div class="qlang-select" title="Question language">
+      <button type="button" class="${qLang==='hi'?'active':''}" data-qlang="hi">हिन्दी</button>
+      <button type="button" class="${qLang==='en'?'active':''}" data-qlang="en">English</button>
+      <button type="button" class="${qLang==='both'?'active':''}" data-qlang="both">Both</button>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px;">
+    <div class="panel-head">
+      <div><h2>${QB_STATE.editId?'Edit MCQ question':'Add MCQ question'}</h2><p>${qLangHint} Select the correct option using the radio button.</p></div>
+      ${QB_STATE.editId?`<button class="btn btn-ghost btn-sm" type="button" id="cancelEditBtn">✕ Cancel edit</button>`:''}
+    </div>
+    ${QB_STATE.editId?`<div class="info-box">You are editing question #${qs.findIndex(q=>q.id===QB_STATE.editId)+1}.</div>`:''}
+    <form id="addQForm">
+      ${qLang==='both'?`
+      <div class="field-row">
+        <div class="field"><label>Question (English)</label><textarea name="textEn" rows="2" required>${esc(QB_STATE.textEn)}</textarea></div>
+        <div class="field"><label>Question (Hindi)</label><textarea name="textHi" rows="2" required>${esc(QB_STATE.textHi)}</textarea></div>
+      </div>` : qLang==='hi' ? `
+      <div class="field"><label>Question (Hindi)</label><textarea name="textHi" rows="2" required>${esc(QB_STATE.textHi)}</textarea></div>` : `
+      <div class="field"><label>Question (English)</label><textarea name="textEn" rows="2" required>${esc(QB_STATE.textEn)}</textarea></div>`}
+      <div class="field">
+        <label>Option type</label>
+        <div style="display:flex;align-items:stretch;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <div class="tabs" style="max-width:280px;margin:0;">
+            <div class="tab ${QB_STATE.optType==='text'?'active':''}" data-opttype="text">Text</div>
+            <div class="tab ${QB_STATE.optType==='image'?'active':''}" data-opttype="image">Image</div>
+          </div>
+          <button type="button" class="btn btn-primary" id="doneQBtn" style="padding:8px 18px;font-size:13.5px;font-weight:700;" title="Click here once the question is ready — only then will it appear on the security person site">✓ Done</button>
+        </div>
+      </div>
+      <div id="optBuilders">${renderOptBuilders(qLang)}</div>
+      <button class="btn btn-primary" type="submit" style="margin-top:6px;">${QB_STATE.editId?'Save changes':'+ Add question (draft)'}</button>
+    </form>
+  </div>
+  <div class="card">
+    <div class="panel-head"><div><h2>Questions in this exam (${qs.length})</h2></div></div>
+    ${qs.length===0?emptyState('clipboard','No question yet','Add the first question from above.'):
+    qs.map((q,i)=>{
+      const pub = isQPublished(q);
+      const statusChip = pub?`<span class="badge badge-done">Live · security site pr</span>`:`<span class="badge badge-pending">Draft · not visible to guard yet</span>`;
+      const publishBtn = pub?'':`<button class="btn btn-sm btn-primary" data-publishq="${q.id}">✓ Done</button>`;
+      return `<div class="q-edit-row">
+      <div class="qtop"><b>${i+1}. ${esc(qLang==='hi'?q.textHi:q.textEn)}</b><div style="display:flex;gap:6px;flex-shrink:0;align-items:center;">${statusChip} ${publishBtn}<button class="btn btn-sm" data-editq="${q.id}">✎ Edit</button><button class="btn btn-sm btn-danger" data-delq="${q.id}">Delete</button></div></div>
+      ${qLang==='both'?`<div style="color:var(--muted);font-size:12.5px;margin-top:2px;">${esc(q.textHi)}</div>`:''}
+      <div class="opts-preview">${q.options.map((o,oi)=>`<span class="chip ${oi===q.correct?'right':''}">${letter(oi)}: ${q.optType==='image'?'[image]':esc(qLang==='hi'?o.hi:o.en)}${oi===q.correct?' ✓ correct':''}</span>`).join('')}</div>
+    </div>`;
+    }).join('')}
+  </div>`;
+}
+function renderOptBuilders(qLang){
+  qLang = qLang || 'both';
+  if(QB_STATE.optType==='text'){
+    return QB_STATE.opts.map((o,i)=>`
+    <div class="opt-builder">
+      <div class="opt-builder-top">
+        <label><input type="radio" name="correctOpt" value="${i}" ${QB_STATE.correct===i?'checked':''}> Option ${letter(i)} is correct</label>
+      </div>
+      ${qLang==='both'?`
+      <div class="field-row">
+        <div class="field" style="margin-bottom:0;"><input type="text" data-optfield="en" data-oi="${i}" placeholder="Option ${letter(i)} — English" value="${esc(o.en)}"></div>
+        <div class="field" style="margin-bottom:0;"><input type="text" data-optfield="hi" data-oi="${i}" placeholder="Option ${letter(i)} — Hindi" value="${esc(o.hi)}"></div>
+      </div>` : qLang==='hi' ? `
+      <div class="field" style="margin-bottom:0;"><input type="text" data-optfield="hi" data-oi="${i}" placeholder="Option ${letter(i)} — Hindi" value="${esc(o.hi)}"></div>` : `
+      <div class="field" style="margin-bottom:0;"><input type="text" data-optfield="en" data-oi="${i}" placeholder="Option ${letter(i)} — English" value="${esc(o.en)}"></div>`}
+    </div>`).join('');
+  }
+  return QB_STATE.opts.map((o,i)=>`
+    <div class="opt-builder">
+      <div class="opt-builder-top">
+        <label><input type="radio" name="correctOpt" value="${i}" ${QB_STATE.correct===i?'checked':''}> Option ${letter(i)} is correct</label>
+      </div>
+      <div class="img-drop" data-imgdrop="${i}">
+        ${o.img?`<img src="${o.img}">`:`${icon('image',20)} Click to upload image for option ${letter(i)}`}
+      </div>
+      <input type="file" accept="image/*" data-imginput="${i}" style="display:none;">
+    </div>`).join('');
+}
+function bindAdminExamQuestions(){
+  const ex = examById(S.adminExamId);
+  document.querySelector('[data-backtomonth]').addEventListener('click',()=>{ resetQB(); goBack(); });
+  document.querySelectorAll('[data-qlang]').forEach(el=>el.addEventListener('click',()=>{
+    const val = el.getAttribute('data-qlang');
+    if(ex && ex.qLang!==val){
+      const prev = ex.qLang;
+      ex.qLang = val; resetQB(); patch({});
+      sb.from('exams').update({q_lang:val}).eq('id', ex.id).then(({error})=>{ if(error){ console.error(error); ex.qLang = prev; patch({}); } });
+    }
+  }));
+  document.querySelectorAll('[data-delq]').forEach(el=>el.addEventListener('click',()=>{
+    if(!confirm('Delete this question?')) return;
+    const delId = el.getAttribute('data-delq');
+    el.disabled = true; el.textContent = 'Deleting…';
+    sb.from('questions').delete().eq('id', delId).then(({error})=>{
+      if(error){ console.error(error); alert('Delete failed, please try again.'); el.disabled=false; el.textContent='Delete'; return; }
+      if(QB_STATE.editId===delId) resetQB();
+      DB.questions = DB.questions.filter(q=>q.id!==delId);
+      patch({});
+    });
+  }));
+  document.querySelectorAll('[data-editq]').forEach(el=>el.addEventListener('click',()=>{
+    const q = DB.questions.find(qq=>qq.id===el.getAttribute('data-editq'));
+    if(!q) return;
+    QB_STATE = {
+      editId: q.id,
+      textEn: q.textEn, textHi: q.textHi,
+      optType: q.optType,
+      opts: q.options.map(o=> q.optType==='text' ? {en:o.en, hi:o.hi, img:null} : {en:'', hi:'', img:o.img}),
+      correct: q.correct
+    };
+    patch({});
+    window.scrollTo({top:0, behavior:'smooth'});
+  }));
+  const cancelBtn = document.getElementById('cancelEditBtn');
+  if(cancelBtn) cancelBtn.addEventListener('click',()=>{ resetQB(); patch({}); });
+  document.querySelectorAll('[data-opttype]').forEach(el=>el.addEventListener('click',()=>{
+    QB_STATE.optType = el.getAttribute('data-opttype');
+    document.getElementById('optBuilders').innerHTML = renderOptBuilders(ex&&ex.qLang);
+    rebindOptBuilders();
+    // re-render just the tabs active state
+    document.querySelectorAll('[data-opttype]').forEach(t=>t.classList.toggle('active', t.getAttribute('data-opttype')===QB_STATE.optType));
+  }));
+  rebindOptBuilders();
+  const f = document.getElementById('addQForm');
+  function collectAndValidate(){
+    const fd = new FormData(f);
+    const qLang = (ex && ex.qLang) || 'both';
+    /* pull whichever language field(s) this exam's mode actually shows;
+       for a single-language exam, mirror the same text into both en/hi
+       fields so the rest of the app (guard runner, review, export) keeps working */
+    if(qLang==='both'){
+      QB_STATE.textEn = fd.get('textEn').trim();
+      QB_STATE.textHi = fd.get('textHi').trim();
+    } else if(qLang==='hi'){
+      QB_STATE.textHi = fd.get('textHi').trim();
+      QB_STATE.textEn = QB_STATE.textHi;
+    } else {
+      QB_STATE.textEn = fd.get('textEn').trim();
+      QB_STATE.textHi = QB_STATE.textEn;
+    }
+    if(QB_STATE.optType==='text'){
+      if(qLang==='both'){
+        if(QB_STATE.opts.some(o=>!o.en.trim()||!o.hi.trim())){ alert('Hindi and English text is required for all 4 options.'); return false; }
+      } else if(qLang==='hi'){
+        if(QB_STATE.opts.some(o=>!o.hi.trim())){ alert('Hindi text is required for all 4 options.'); return false; }
+        QB_STATE.opts.forEach(o=>{ o.en = o.hi; });
+      } else {
+        if(QB_STATE.opts.some(o=>!o.en.trim())){ alert('English text is required for all 4 options.'); return false; }
+        QB_STATE.opts.forEach(o=>{ o.hi = o.en; });
+      }
+    } else {
+      if(QB_STATE.opts.some(o=>!o.img)){ alert('Upload an image for all 4 options.'); return false; }
+    }
+    return true;
+  }
+  /* forcePublish===true -> always published (the "Done" button);
+     otherwise: editing keeps the question's current draft/live status,
+     a brand-new question is saved as a draft until admin hits Done. */
+  function saveQuestion(forcePublish){
+    if(!collectAndValidate()) return;
+    const isEdit = !!QB_STATE.editId;
+    let publishedVal;
+    if(forcePublish===true) publishedVal = true;
+    else if(isEdit){
+      const existing = DB.questions.find(qq=>qq.id===QB_STATE.editId);
+      publishedVal = existing ? isQPublished(existing) : false;
+    } else {
+      publishedVal = false;
+    }
+    if(isEdit){
+      const q = DB.questions.find(qq=>qq.id===QB_STATE.editId);
+      const updated = {
+        textEn: QB_STATE.textEn, textHi: QB_STATE.textHi,
+        optType: QB_STATE.optType,
+        options: QB_STATE.opts.map(o=>QB_STATE.optType==='text'?{en:o.en.trim(),hi:o.hi.trim()}:{img:o.img}),
+        correct: QB_STATE.correct,
+        published: publishedVal
+      };
+      withBusy(f, async ()=>{
+        const {error} = await sb.from('questions').update(toSnake(updated)).eq('id', QB_STATE.editId);
+        if(error) throw error;
+        if(q) Object.assign(q, updated);
+        resetQB();
+        patch({});
+      });
+    } else {
+      const order = questionsForExam(S.adminExamId).length;
+      const question = {
+        id: uid('q'), examId: S.adminExamId, order,
+        textEn: QB_STATE.textEn, textHi: QB_STATE.textHi,
+        optType: QB_STATE.optType,
+        options: QB_STATE.opts.map(o=>QB_STATE.optType==='text'?{en:o.en.trim(),hi:o.hi.trim()}:{img:o.img}),
+        correct: QB_STATE.correct,
+        published: publishedVal,
+        createdAt: Date.now()
+      };
+      withBusy(f, async ()=>{
+        const {error} = await sb.from('questions').insert(toSnake(question));
+        if(error) throw error;
+        DB.questions.push(question);
+        resetQB();
+        patch({});
+      });
+    }
+  }
+  if(f) f.addEventListener('submit', e=>{ e.preventDefault(); saveQuestion(); });
+  const doneBtn = document.getElementById('doneQBtn');
+  if(doneBtn) doneBtn.addEventListener('click', ()=> saveQuestion(true));
+  document.querySelectorAll('[data-publishq]').forEach(el=>el.addEventListener('click',()=>{
+    const id = el.getAttribute('data-publishq');
+    const q = DB.questions.find(qq=>qq.id===id);
+    if(!q) return;
+    el.disabled = true; el.textContent = 'Publishing…';
+    sb.from('questions').update({published:true}).eq('id', id).then(({error})=>{
+      if(error){ console.error(error); alert('Publish failed, please try again.'); el.disabled=false; el.textContent='✓ Done'; return; }
+      q.published = true;
+      patch({});
+    });
+  }));
+}
+function rebindOptBuilders(){
+  document.querySelectorAll('[name="correctOpt"]').forEach(el=>el.addEventListener('change',()=>{ QB_STATE.correct = parseInt(el.value,10); }));
+  document.querySelectorAll('[data-optfield]').forEach(el=>el.addEventListener('input',()=>{
+    const oi = parseInt(el.getAttribute('data-oi'),10), f = el.getAttribute('data-optfield');
+    QB_STATE.opts[oi][f] = el.value;
+  }));
+  document.querySelectorAll('[data-imgdrop]').forEach(el=>{
+    const oi = el.getAttribute('data-imgdrop');
+    el.addEventListener('click',()=>document.querySelector(`[data-imginput="${oi}"]`).click());
+  });
+  document.querySelectorAll('[data-imginput]').forEach(el=>{
+    el.addEventListener('change',(e)=>{
+      const oi = parseInt(el.getAttribute('data-imginput'),10);
+      const file = e.target.files[0]; if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{ QB_STATE.opts[oi].img = reader.result; document.getElementById('optBuilders').innerHTML = renderOptBuilders(); rebindOptBuilders(); };
+      reader.readAsDataURL(file);
+    });
+  });
+}
+
+/* --- Admin: Results --- */
+function adminResults(){
+  const months = monthsSorted();
+  const selMonth = S.adminMonthFilter || (months[0] && months[0].id) || '';
+  const exams = selMonth ? examsForMonth(selMonth) : [];
+  const selExam = S.adminExamFilter || (exams[0] && exams[0].id) || '';
+  const allAttempts = selExam ? DB.attempts.filter(a=>a.examId===selExam).sort((a,b)=>a.submittedAt-b.submittedAt) : [];
+  const rq = (S.resultsSearchQuery||'').trim().toLowerCase();
+  const attempts = rq ? allAttempts.filter(a=>{
+    const g = findGuard(a.guardMobile);
+    return (g&&g.name&&g.name.toLowerCase().includes(rq)) || (g&&g.gatePass&&g.gatePass.toLowerCase().includes(rq)) || a.guardMobile.includes(rq);
+  }) : allAttempts;
+  const selExamObj = selExam ? examById(selExam) : null;
+  const totalGuards = DB.guards.length;
+  const attemptedCount = new Set(allAttempts.map(a=>a.guardMobile)).size;
+  return `
+  <div class="stat-row">
+    <div class="stat-box"><div class="n">${totalGuards}</div><div class="l">Registered guards</div></div>
+    <div class="stat-box"><div class="n">${DB.exams.length}</div><div class="l">Exam sections</div></div>
+    <div class="stat-box"><div class="n">${DB.attempts.length}</div><div class="l">Total attempts</div></div>
+    <div class="stat-box"><div class="n">${attemptedCount}</div><div class="l">Attempted (this exam)</div></div>
+  </div>
+  <div class="card">
+    <div class="panel-head"><div><h2>Results${selExamObj&&selExamObj.examType?` <span class="chip">${esc(selExamObj.examType)}</span>`:''}</h2><p>Select a month and exam to view results, or export to Excel.</p></div></div>
+    <div class="field-row" style="margin-bottom:18px;">
+      <div class="field" style="margin-bottom:0;"><label>Month</label>
+        <select id="filterMonth">${months.map(m=>`<option value="${m.id}" ${m.id===selMonth?'selected':''}>${esc(m.label)}</option>`).join('')}</select>
+      </div>
+      <div class="field" style="margin-bottom:0;"><label>Exam section</label>
+        <select id="filterExam">${exams.map(e=>`<option value="${e.id}" ${e.id===selExam?'selected':''}>${esc(e.nameEn)}</option>`).join('')}</select>
+      </div>
+    </div>
+    ${selExam?`<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary btn-sm" id="exportBtn">⬇ Export to Excel</button></div>`:''}
+    ${allAttempts.length===0?emptyState('chart','No attempts for this exam yet','Results will appear here once guards attempt it.'):`
+    <div class="search-box"><input type="text" id="resultsSearchInput" placeholder="Search by name or gate pass…" value="${esc(S.resultsSearchQuery||'')}"></div>
+    ${attempts.length===0?emptyState('search','No guard found','Check the spelling and try again.'):
+    `<div class="table-wrap"><table><thead><tr><th>S.No.</th><th>Name</th><th>Gate pass</th><th>Post</th><th>Date</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>
+      ${attempts.map((a,idx)=>{
+        const g = findGuard(a.guardMobile); const dt = fmtDateTime(a.submittedAt);
+        return `<tr><td class="mono">${idx+1}</td><td>${esc(g?g.name:a.guardMobile)}</td><td class="mono">${esc(g?g.gatePass:'-')}</td><td>${esc(g?g.post:'-')}</td><td class="mono">${dt.date} ${dt.time}</td><td class="mono">${a.score}/${a.total}</td>
+        <td>${a.approvedRetake?'<span class="badge badge-open">Re-attempt open</span>':'<span class="badge badge-locked">Locked</span>'}</td>
+        <td style="display:flex;gap:6px;"><button class="btn btn-sm" data-viewatt="${a.id}">View</button>${!a.approvedRetake?`<button class="btn btn-sm" data-approve="${a.id}">Allow retry</button>`:''}<button class="btn btn-sm btn-danger btn-icon" data-delatt="${a.id}" title="Delete result">${icon('trash',14)}</button></td></tr>`;
+      }).join('')}
+    </tbody></table></div>`}`}
+  </div>`;
+}
+function bindAdminResults(){
+  const fm = document.getElementById('filterMonth');
+  if(fm) fm.addEventListener('change',()=>patch({adminMonthFilter:fm.value, adminExamFilter:null}));
+  const fe = document.getElementById('filterExam');
+  if(fe) fe.addEventListener('change',()=>patch({adminExamFilter:fe.value}));
+  const rs = document.getElementById('resultsSearchInput');
+  if(rs){ rs.focus(); rs.setSelectionRange(rs.value.length, rs.value.length);
+    rs.addEventListener('input',()=>patch({resultsSearchQuery:rs.value})); }
+  document.querySelectorAll('[data-viewatt]').forEach(el=>el.addEventListener('click',()=>go('admin-review',{attemptId:el.getAttribute('data-viewatt'), from:null, adminTab:'results'})));
+  document.querySelectorAll('[data-approve]').forEach(el=>el.addEventListener('click',()=>{
+    const att = DB.attempts.find(a=>a.id===el.getAttribute('data-approve'));
+    if(!att) return;
+    el.disabled = true; el.textContent = 'Please wait…';
+    sb.from('attempts').update({approved_retake:true}).eq('id', att.id).then(({error})=>{
+      if(error){ console.error(error); alert('Allow retry failed, please try again.'); el.disabled=false; el.textContent='Allow retry'; return; }
+      att.approvedRetake = true; patch({});
+    });
+  }));
+  document.querySelectorAll('[data-delatt]').forEach(el=>el.addEventListener('click',()=>{
+    if(!confirm('Permanently delete this result for this security person? This action cannot be undone.')) return;
+    const delId = el.getAttribute('data-delatt');
+    el.disabled = true;
+    sb.from('attempts').delete().eq('id', delId).then(({error})=>{
+      if(error){ console.error(error); alert('Delete failed, please try again.'); el.disabled=false; return; }
+      DB.attempts = DB.attempts.filter(a=>a.id!==delId);
+      patch({});
+    });
+  }));
+  const exp = document.getElementById('exportBtn');
+  if(exp) exp.addEventListener('click',()=>exportExamExcel(S.adminExamFilter || (examsForMonth(S.adminMonthFilter||monthsSorted()[0].id)[0]||{}).id));
+}
+
+function exportExamExcel(examId){
+  const ex = examById(examId);
+  if(!ex){ alert('Please select an exam.'); return; }
+  const qs = questionsForExam(examId);
+  const attempts = DB.attempts.filter(a=>a.examId===examId).sort((a,b)=>a.submittedAt-b.submittedAt);
+  if(attempts.length===0){ alert('There are no attempts for this exam yet.'); return; }
+  const header = ['Date','Time','Name','Gate Pass Number','Post','Mobile','Exam Type','Total Marks','Achieved Marks'];
+  for(let i=0;i<qs.length;i++) header.push('Q'+(i+1)+' Selected');
+  const rows = [header];
+  attempts.forEach(a=>{
+    const g = findGuard(a.guardMobile);
+    const dt = fmtDateTime(a.submittedAt);
+    const row = [dt.date, dt.time, g?g.name:a.guardMobile, g?g.gatePass:'-', g?g.post:'-', a.guardMobile, ex.examType||'-', a.total, a.score];
+    qs.forEach((q,i)=> row.push(a.answers[i]!=null ? letter(a.answers[i]) : ''));
+    rows.push(row);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = header.map((h,i)=> i<9 ? {wch: Math.max(12,h.length+2)} : {wch:10});
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, (ex.nameEn||'Exam').slice(0,28));
+  const blob = new Blob([XLSX.write(wb,{bookType:'xlsx', type:'array'})], {type:'application/octet-stream'});
+  const filename = (ex.nameEn.replace(/[^a-z0-9]+/gi,'_')||'exam_results') + '_results.xlsx';
+  if(window.claude){
+    claude.use('downloads').then(dl=>{
+      if(!dl){ fallbackDownload(blob, filename); return; }
+      dl.save({filename, data: blob}).catch(()=>fallbackDownload(blob, filename));
+    }).catch(()=>fallbackDownload(blob, filename));
+  } else {
+    fallbackDownload(blob, filename);
+  }
+}
+function fallbackDownload(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+/* --- Admin: Search --- */
+function adminSearch(){
+  const q = (S.searchQuery||'').trim().toLowerCase();
+  let results = [];
+  if(q){
+    results = DB.guards.filter(g=> g.gatePass.toLowerCase().includes(q) || g.name.toLowerCase().includes(q) || g.mobile.includes(q));
+  }
+  return `
+  <div class="card">
+    <div class="panel-head"><div><h2>Search security person</h2><p>Search by name, gate pass number, or mobile number.</p></div></div>
+    <div class="search-box"><input type="text" id="searchInput" placeholder="e.g. GP-1042 or guard name" value="${esc(S.searchQuery||'')}"></div>
+    ${!q?emptyState('search','Start by searching','Type a name or gate pass number.'):
+    results.length===0?emptyState('search','No guard found','Check the spelling and try again.'):
+    results.map(g=>{
+      const atts = allAttemptsForGuard(g.mobile);
+      return `<div class="item-row"><div class="info"><b>${esc(g.name)}</b><span>${esc(g.gatePass)} · ${esc(g.post)} · ${esc(g.mobile)} · ${atts.length} exam${atts.length===1?'':'s'} attempted</span></div>
+      <div class="actions"><button class="btn btn-sm" data-profile="${g.mobile}">View profile →</button></div></div>`;
+    }).join('')}
+  </div>`;
+}
+function bindAdminSearch(){
+  const inp = document.getElementById('searchInput');
+  if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
+    inp.addEventListener('input',()=>patch({searchQuery:inp.value})); }
+  document.querySelectorAll('[data-profile]').forEach(el=>el.addEventListener('click',()=>goPush({adminTab:'guardprofile', profileMobile:el.getAttribute('data-profile')})));
+}
+function adminGuardProfile(){
+  const g = findGuard(S.profileMobile);
+  if(!g) return emptyState('warn','Guard not found','');
+  const atts = allAttemptsForGuard(g.mobile);
+  const attemptedExamIds = new Set(atts.map(a=>a.examId));
+  const totalExams = DB.exams.length;
+  const attemptedCount = attemptedExamIds.size;
+  const missedCount = totalExams - attemptedCount;
+  const months = monthsSorted();
+  const missedByMonth = months.map(m=>({ month:m, exams: examsForMonth(m.id).filter(ex=>!attemptedExamIds.has(ex.id)) })).filter(x=>x.exams.length>0);
+  const attsChrono = atts.slice().sort((a,b)=>a.submittedAt-b.submittedAt);
+  return `
+  <div class="crumb"><a data-backsearch="1">Search</a> <span>/</span> <span>${esc(g.name)}</span></div>
+  <div class="card" style="margin-bottom:16px;">
+    <div class="panel-head"><div><h2>${esc(g.name)}</h2><p class="mono">${esc(g.gatePass)} · ${esc(g.post)} · ${esc(g.mobile)}</p></div>
+      <button class="btn btn-ghost btn-sm" id="resetPinBtn" type="button">${icon('eye',14)} Reset PIN</button>
+    </div>
+    ${S.showResetPin?`
+    <div class="info-box" style="margin-bottom:0;">
+      <form id="resetPinForm">
+        <div class="field-row">
+          <div class="field" style="margin-bottom:0;"><label>New 4-digit PIN for the guard</label><input type="password" name="newPin" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" required></div>
+          <div class="field" style="margin-bottom:0;"><label>Confirm new PIN</label><input type="password" name="newPin2" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" required></div>
+        </div>
+        <div class="field" style="margin-top:10px;margin-bottom:0;"><label>Your admin password (to confirm)</label><input type="password" name="adminPassword" required></div>
+        ${S.resetPinError?`<div class="error-box" style="margin-top:10px;">${esc(S.resetPinError)}</div>`:''}
+        ${S.resetPinDone?`<div class="info-box" style="margin-top:10px;border-color:var(--green);color:var(--green);">New PIN has been set.</div>`:''}
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn btn-primary btn-sm" type="submit">Set new PIN</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="cancelResetPin">Cancel</button>
+        </div>
+      </form>
+    </div>`:''}
+    <div class="stat-row" style="margin-bottom:0;margin-top:${S.showResetPin?'16px':'0'};">
+      <div class="stat-box"><div class="n">${totalExams}</div><div class="l">Total exams (all months)</div></div>
+      <div class="stat-box"><div class="n" style="color:var(--green);">${attemptedCount}</div><div class="l">Attempted</div></div>
+      <div class="stat-box"><div class="n" style="color:var(--red);">${missedCount}</div><div class="l">Not attempted</div></div>
+      <div class="stat-box"><div class="n">${atts.length}</div><div class="l">Total attempts (incl. retakes)</div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px;">
+    <div class="panel-head"><div><h2>Missed exams</h2><p>These are the exams this guard has not attempted yet, by month.</p></div></div>
+    ${missedByMonth.length===0?emptyState('check','No exams missed','This guard has attempted all published exams.'):
+    missedByMonth.map(x=>`
+      <div style="margin-bottom:14px;">
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:6px;">${esc(x.month.label)}</div>
+        <div class="opts-preview">${x.exams.map(ex=>`<span class="chip" style="border-color:var(--red);color:var(--red);">${esc(ex.nameEn)}</span>`).join('')}</div>
+      </div>
+    `).join('')}
+  </div>
+  <div class="card">
+    <div class="panel-head"><div><h2>Exam history (${atts.length})</h2></div></div>
+    ${atts.length===0?emptyState('doc','No exam attempted yet','',''):
+    `<div class="table-wrap"><table><thead><tr><th>S.No.</th><th>Exam</th><th>Type</th><th>Date</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>
+    ${attsChrono.map((a,idx)=>{
+      const ex = examById(a.examId); const dt = fmtDateTime(a.submittedAt);
+      return `<tr><td class="mono">${idx+1}</td><td>${esc(ex.nameEn)}</td><td>${ex.examType?esc(ex.examType):'-'}</td><td class="mono">${dt.date} ${dt.time}</td><td class="mono">${a.score}/${a.total}</td>
+      <td>${a.approvedRetake?'<span class="badge badge-open">Re-attempt open</span>':'<span class="badge badge-locked">Locked</span>'}</td>
+      <td><button class="btn btn-sm" data-viewatt2="${a.id}">View</button></td></tr>`;
+    }).join('')}
+    </tbody></table></div>`}
+  </div>`;
+}
+function bindAdminGuardProfile(){
+  document.querySelector('[data-backsearch]').addEventListener('click',goBack);
+  document.querySelectorAll('[data-viewatt2]').forEach(el=>el.addEventListener('click',()=>go('admin-review',{attemptId:el.getAttribute('data-viewatt2'), adminTab:'guardprofile', profileMobile:S.profileMobile})));
+  const rpb = document.getElementById('resetPinBtn');
+  if(rpb) rpb.addEventListener('click',()=>patch({showResetPin:!S.showResetPin, resetPinError:null, resetPinDone:false}));
+  const cancelBtn = document.getElementById('cancelResetPin');
+  if(cancelBtn) cancelBtn.addEventListener('click',()=>patch({showResetPin:false, resetPinError:null, resetPinDone:false}));
+  const rpf = document.getElementById('resetPinForm');
+  if(rpf) rpf.addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(rpf);
+    const newPin = fd.get('newPin'), newPin2 = fd.get('newPin2'), adminPassword = fd.get('adminPassword');
+    if(!/^\d{4}$/.test(newPin)){ patch({resetPinError:'PIN must be 4 digits.'}); return; }
+    if(newPin!==newPin2){ patch({resetPinError:'The two PINs do not match.'}); return; }
+    withBusy(rpf, async ()=>{
+      const {error} = await sb.rpc('admin_reset_guard_pin', {
+        p_admin_mobile: SESSION.mobile, p_admin_password: adminPassword,
+        p_guard_mobile: S.profileMobile, p_new_pin: newPin
+      });
+      if(error){
+        if(String(error.message||'').includes('ADMIN_AUTH_FAILED')){ patch({resetPinError:'Your admin password is incorrect.'}); return; }
+        throw error;
+      }
+      patch({resetPinDone:true, resetPinError:null});
+    });
+  });
+}
+
+/* patch admin sub-binds after content swap without full route change */
+const _origPatch = patch;
+patch = function(extra){
+  S = Object.assign({}, S, extra);
+  render();
+};
+
+/* override bindAdminDashboard to also bind month-detail nested handlers */
+const _origBindAdminMonths = bindAdminMonths;
+bindAdminMonths = function(){
+  _origBindAdminMonths();
+  if(S.adminMonthId) bindAdminMonthDetail();
+};
+
+/* ---- boot: fetch everything from Supabase before first paint ---- */
+function bootScreen(msg, isError){
+  return `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:24px;text-align:center;">
+    <div class="brand-icon" style="width:44px;height:44px;border-radius:14px;">${icon('shield',24)}</div>
+    <div style="color:${isError?'var(--red)':'var(--muted)'};font-size:14px;max-width:320px;">${esc(msg)}</div>
+    ${isError?`<button class="btn btn-primary btn-sm" onclick="location.reload()">Retry</button>`:''}
+  </div>`;
+}
+document.getElementById('app').innerHTML = bootScreen('Loading data…');
+loadAllData().then(()=>{
+  render();
+}).catch(err=>{
+  console.error(err);
+  document.getElementById('app').innerHTML = bootScreen('Data could not be loaded. Please check your internet connection and retry.\n\n('+(err&&err.message?err.message:err)+')', true);
+});
+</script>
+</body>
+</html>
