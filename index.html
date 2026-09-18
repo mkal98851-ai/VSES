@@ -96,6 +96,8 @@ button{font-family:inherit;}
 .icon-del-btn:hover{background:#c94951;}
 .icon-del-btn:active{transform:scale(.92);}
 .icon-del-btn .ic{width:14px;height:14px;}
+.name-link{color:var(--amber);cursor:pointer;text-decoration:none;font-weight:600;}
+.name-link:hover{text-decoration:underline;}
 .btn-icon{padding:7px 9px;display:inline-flex;align-items:center;justify-content:center;}
 .btn-sm{padding:6px 11px;font-size:12.5px;}
 .btn-block{width:100%;justify-content:center;}
@@ -488,19 +490,30 @@ let SESSION = JSON.parse(localStorage.getItem('ssms_session_v1')||'null'); // {r
 function setSession(sess){ SESSION = sess; localStorage.setItem('ssms_session_v1', JSON.stringify(sess)); }
 function clearSession(){ SESSION = null; localStorage.removeItem('ssms_session_v1'); HISTORY = []; }
 
-/* ---- navigation history, for the top-left Back button ---- */
+/* ---- navigation history, for the top-left Back button AND the
+   phone/browser's own back button/gesture ----------------------------
+   Previously this app tracked its own screen history purely in memory
+   (the HISTORY array) with no matching browser history entries. That
+   meant the on-screen "← Back" link worked, but the phone's physical
+   back button / browser back button did not know the app had "pages" at
+   all — pressing it would leave the site entirely instead of stepping
+   back one screen the way it does on an ordinary website.
+   Fix: every in-app navigation also pushes one browser history entry
+   (history.pushState). The on-screen Back link now just calls
+   history.back(), and a single popstate listener does the actual work
+   of restoring the previous screen — so the visible Back button and the
+   device's own back button always do exactly the same thing. ------- */
 let HISTORY = [];
 function go(screen, extra){
   if(S && S.screen) HISTORY.push(S);
   S = Object.assign({screen}, extra||{});
   window.scrollTo({top:0,behavior:'instant'});
+  try{ history.pushState({vsesNav:true}, ''); }catch(e){}
   render();
 }
 function goBack(){
   if(HISTORY.length===0) return;
-  S = HISTORY.pop();
-  window.scrollTo({top:0,behavior:'instant'});
-  render();
+  try{ history.back(); }catch(e){ S = HISTORY.pop(); window.scrollTo({top:0,behavior:'instant'}); render(); }
 }
 function patch(extra){ S = Object.assign({}, S, extra); render(); }
 /* like go(), but stays on the same top-level screen while drilling into a
@@ -511,8 +524,26 @@ function goPush(extra){
   HISTORY.push(S);
   S = Object.assign({}, S, extra);
   window.scrollTo({top:0,behavior:'instant'});
+  try{ history.pushState({vsesNav:true}, ''); }catch(e){}
   render();
 }
+window.addEventListener('popstate', ()=>{
+  if(S && S.screen==='guard-exam-run'){
+    // Never let a stray back-button press quietly throw away an in-progress
+    // exam and its answers — confirm first, and if the person cancels,
+    // push the browser back to where it was so they stay on the exam.
+    const leave = confirm('Are you sure you want to leave? Your exam progress and answers will be lost.');
+    if(!leave){ try{ history.pushState({vsesNav:true}, ''); }catch(e){} return; }
+  }
+  if(HISTORY.length>0){
+    S = HISTORY.pop();
+    window.scrollTo({top:0,behavior:'instant'});
+    render();
+  }
+  // if HISTORY is already empty there is nothing left inside the app to
+  // go back to, so the browser is simply allowed to leave the page as it
+  // normally would — exactly like pressing back on any other website.
+});
 
 function findGuard(mobile){ return DB.guards.find(g=>g.mobile===mobile); }
 function findAdmin(mobile){ return DB.admins.find(a=>a.mobile===mobile); }
@@ -1129,12 +1160,7 @@ function screenReview(mode){
   `;
 }
 function bindReview(){
-  document.querySelector('[data-back]').addEventListener('click',()=>{
-    if(S.from==='guard-month') go('guard-month',{monthId:S.monthId});
-    else if(S.from==='guard-myexams') go('guard-myexams');
-    else if(SESSION && SESSION.role==='admin') go('admin-dashboard', {adminTab: S.adminTab||'results', adminExamId:S.adminExamId, adminMonthId:S.adminMonthId, searchQuery:S.searchQuery});
-    else go('home');
-  });
+  document.querySelector('[data-back]').addEventListener('click', goBack);
   document.querySelectorAll('[data-rlang]').forEach(el=>el.addEventListener('click',()=>patch({reviewLang:el.getAttribute('data-rlang')})));
 }
 
@@ -1185,7 +1211,6 @@ function screenAdminDashboard(){
     ['masterdata',icon('chart',15),'Master Data'],
     ['months',icon('calendar',15),'Months &amp; Exams'],
     ['results',icon('chart',15),'Results'],
-    ['search',icon('search',15),'Search Security Person'],
   ];
   return `
   <div class="admin-layout">
@@ -1200,7 +1225,6 @@ function adminContent(tab){
   if(tab==='months') return adminMonths();
   if(tab==='exam') return adminExamQuestions();
   if(tab==='results') return adminResults();
-  if(tab==='search') return adminSearch();
   if(tab==='guardprofile') return adminGuardProfile();
   return adminMonths();
 }
@@ -1213,7 +1237,6 @@ function bindAdminContent(tab){
   if(tab==='months') return bindAdminMonths();
   if(tab==='exam') return bindAdminExamQuestions();
   if(tab==='results') return bindAdminResults();
-  if(tab==='search') return bindAdminSearch();
   if(tab==='guardprofile') return bindAdminGuardProfile();
 }
 
@@ -1682,9 +1705,9 @@ function adminResults(){
     `<div class="table-wrap"><table><thead><tr><th>S.No.</th><th>Name</th><th>Gate pass</th><th>Post</th><th>Date</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>
       ${attempts.map((a,idx)=>{
         const g = findGuard(a.guardMobile); const dt = fmtDateTime(a.submittedAt);
-        return `<tr><td class="mono">${idx+1}</td><td>${esc(g?g.name:a.guardMobile)}</td><td class="mono">${esc(g?g.gatePass:'-')}</td><td>${esc(g?g.post:'-')}</td><td class="mono">${dt.date} ${dt.time}</td><td class="mono">${a.score}/${a.total}</td>
+        return `<tr><td class="mono">${idx+1}</td><td><span class="name-link" data-profile="${esc(a.guardMobile)}">${esc(g?g.name:a.guardMobile)}</span></td><td class="mono">${esc(g?g.gatePass:'-')}</td><td>${esc(g?g.post:'-')}</td><td class="mono">${dt.date} ${dt.time}</td><td class="mono">${a.score}/${a.total}</td>
         <td>${a.approvedRetake?'<span class="badge badge-open">Re-attempt open</span>':'<span class="badge badge-locked">Locked</span>'}</td>
-        <td style="display:flex;gap:6px;"><button class="btn btn-sm" data-viewatt="${a.id}">View</button>${!a.approvedRetake?`<button class="btn btn-sm" data-approve="${a.id}">Allow retry</button>`:''}<button class="btn btn-sm btn-danger btn-icon" data-delatt="${a.id}" title="Delete result">${icon('trash',14)}</button></td></tr>`;
+        <td style="display:flex;gap:6px;"><button class="btn btn-sm" data-viewatt="${a.id}">View</button><button class="btn btn-sm btn-danger btn-icon" data-delatt="${a.id}" title="Delete result">${icon('trash',14)}</button></td></tr>`;
       }).join('')}
     </tbody></table></div>`}`}
   </div>`;
@@ -1698,15 +1721,7 @@ function bindAdminResults(){
   if(rs){ rs.focus(); rs.setSelectionRange(rs.value.length, rs.value.length);
     rs.addEventListener('input',()=>patch({resultsSearchQuery:rs.value})); }
   document.querySelectorAll('[data-viewatt]').forEach(el=>el.addEventListener('click',()=>go('admin-review',{attemptId:el.getAttribute('data-viewatt'), from:null, adminTab:'results'})));
-  document.querySelectorAll('[data-approve]').forEach(el=>el.addEventListener('click',()=>{
-    const att = DB.attempts.find(a=>a.id===el.getAttribute('data-approve'));
-    if(!att) return;
-    el.disabled = true; el.textContent = 'Please wait…';
-    dbWrite(sb.from('attempts').update({approved_retake:true}).eq('id', att.id)).then(({ok,error})=>{
-      if(!ok){ console.error(error); alert('Allow retry failed.\n\n'+(error&&error.message?error.message:'Please try again.')); el.disabled=false; el.textContent='Allow retry'; return; }
-      att.approvedRetake = true; patch({});
-    });
-  }));
+  document.querySelectorAll('[data-profile]').forEach(el=>el.addEventListener('click',()=>goPush({adminTab:'guardprofile', profileMobile:el.getAttribute('data-profile')})));
   document.querySelectorAll('[data-delatt]').forEach(el=>el.addEventListener('click',()=>{
     if(!confirm('Permanently delete this result for this security person? This action cannot be undone.')) return;
     const delId = el.getAttribute('data-delatt');
@@ -1795,6 +1810,7 @@ function adminMasterData(){
       </div>
     </div>
   </div>
+  ${adminMasterDataGuardSearch()}
   ${monthNumsPresent.length===0?emptyState('calendar','No month added yet','Pehle "Months &amp; Exams" me month aur exam section add karein.'):
   !selMonthRec?emptyState('calendar','This month/year has no data','Kripya koi aur Month/Year chunein.'):
   examsInMonth.length===0?emptyState('doc','No exam section in this month','Is month me abhi koi exam section nahin hai.'):`
@@ -1803,6 +1819,25 @@ function adminMasterData(){
     <div class="stat-box clickable" data-mdbox="attend"><div class="n" style="color:var(--green);">${attend.length}</div><div class="l">Attend</div></div>
     <div class="stat-box clickable" data-mdbox="notattend"><div class="n" style="color:var(--red);">${notAttend.length}</div><div class="l">Not Attend</div></div>
   </div>`}`;
+}
+/* Search-by-name/gate-pass/mobile box, embedded directly under the
+   Month/Year/Exam-type filter (this used to be its own top-level
+   "Search Security Person" tab). Clicking a result opens that guard's
+   full profile, same as clicking a name anywhere else in the app. */
+function adminMasterDataGuardSearch(){
+  const q = (S.guardSearchQuery||'').trim().toLowerCase();
+  const results = q ? DB.guards.filter(g=> g.gatePass.toLowerCase().includes(q) || g.name.toLowerCase().includes(q) || g.mobile.includes(q)) : [];
+  return `
+  <div class="card" style="margin-bottom:16px;">
+    <div class="panel-head"><div><h2>Search security person</h2><p>Search by name, gate pass number, or mobile number.</p></div></div>
+    <div class="search-box"><input type="text" id="guardSearchInput" placeholder="e.g. GP-1042 or guard name" value="${esc(S.guardSearchQuery||'')}"></div>
+    ${!q?'':results.length===0?emptyState('search','No guard found','Check the spelling and try again.'):
+    results.map(g=>{
+      const atts = allAttemptsForGuard(g.mobile);
+      return `<div class="item-row"><div class="info"><b class="name-link" data-profile="${esc(g.mobile)}">${esc(g.name)}</b><span>${esc(g.gatePass)} · ${esc(g.post)} · ${esc(g.mobile)} · ${atts.length} exam${atts.length===1?'':'s'} attempted</span></div>
+      <div class="actions"><button class="btn btn-sm" data-profile="${esc(g.mobile)}">View profile →</button></div></div>`;
+    }).join('')}
+  </div>`;
 }
 function adminMasterDataDetail(view){
   let title, showRank=false, rows;
@@ -1827,7 +1862,7 @@ function adminMasterDataDetail(view){
     `<div class="table-wrap"><table><thead><tr>${showRank?'<th>Rank</th>':'<th>S.No.</th>'}<th>Name</th><th>Gate pass</th><th>Mobile</th><th>Post</th>${showRank?'<th>Marks</th><th>Percentage</th>':''}${view==='registered'?'<th></th>':''}</tr></thead><tbody>
     ${filteredRows.map((r,idx)=>{
       const g=r.g;
-      return `<tr><td class="mono">${showRank?r.rank:idx+1}</td><td>${esc(g.name)}</td><td class="mono">${esc(g.gatePass)}</td><td class="mono">${esc(g.mobile)}</td><td>${esc(g.post)}</td>${showRank?`<td class="mono">${r.achievedMarks}/${r.totalMarks}</td><td class="mono">${r.pct.toFixed(1)}%</td>`:''}${view==='registered'?`<td><button class="icon-del-btn" data-delguard="${esc(g.mobile)}" title="Remove security person">${icon('trash',14)}</button></td>`:''}</tr>`;
+      return `<tr><td class="mono">${showRank?r.rank:idx+1}</td><td><span class="name-link" data-profile="${esc(g.mobile)}">${esc(g.name)}</span></td><td class="mono">${esc(g.gatePass)}</td><td class="mono">${esc(g.mobile)}</td><td>${esc(g.post)}</td>${showRank?`<td class="mono">${r.achievedMarks}/${r.totalMarks}</td><td class="mono">${r.pct.toFixed(1)}%</td>`:''}${view==='registered'?`<td><button class="icon-del-btn" data-delguard="${esc(g.mobile)}" title="Remove security person">${icon('trash',14)}</button></td>`:''}</tr>`;
     }).join('')}
     </tbody></table></div>`}
   </div>`;
@@ -1847,6 +1882,10 @@ function bindAdminMasterData(){
   document.querySelectorAll('[data-mdbox]').forEach(el=>el.addEventListener('click',()=>{
     goPush({mdView: el.getAttribute('data-mdbox'), mdSearchQuery:''});
   }));
+  const gs = document.getElementById('guardSearchInput');
+  if(gs){ gs.focus(); gs.setSelectionRange(gs.value.length, gs.value.length);
+    gs.addEventListener('input',()=>patch({guardSearchQuery:gs.value})); }
+  document.querySelectorAll('[data-profile]').forEach(el=>el.addEventListener('click',()=>goPush({adminTab:'guardprofile', profileMobile:el.getAttribute('data-profile')})));
 }
 function bindAdminMasterDataDetail(){
   const back = document.querySelector('[data-mdback]');
@@ -1856,6 +1895,7 @@ function bindAdminMasterDataDetail(){
     inp.addEventListener('input',()=>patch({mdSearchQuery:inp.value})); }
   const exp = document.getElementById('mdExportBtn');
   if(exp) exp.addEventListener('click',()=>exportMasterDataExcel(S.mdView));
+  document.querySelectorAll('[data-profile]').forEach(el=>el.addEventListener('click',()=>goPush({adminTab:'guardprofile', profileMobile:el.getAttribute('data-profile')})));
   document.querySelectorAll('[data-delguard]').forEach(el=>el.addEventListener('click',()=>{
     const mobile = el.getAttribute('data-delguard');
     const g = findGuard(mobile);
@@ -1900,32 +1940,8 @@ function exportMasterDataExcel(view){
   }
 }
 
-/* --- Admin: Search --- */
-function adminSearch(){
-  const q = (S.searchQuery||'').trim().toLowerCase();
-  let results = [];
-  if(q){
-    results = DB.guards.filter(g=> g.gatePass.toLowerCase().includes(q) || g.name.toLowerCase().includes(q) || g.mobile.includes(q));
-  }
-  return `
-  <div class="card">
-    <div class="panel-head"><div><h2>Search security person</h2><p>Search by name, gate pass number, or mobile number.</p></div></div>
-    <div class="search-box"><input type="text" id="searchInput" placeholder="e.g. GP-1042 or guard name" value="${esc(S.searchQuery||'')}"></div>
-    ${!q?emptyState('search','Start by searching','Type a name or gate pass number.'):
-    results.length===0?emptyState('search','No guard found','Check the spelling and try again.'):
-    results.map(g=>{
-      const atts = allAttemptsForGuard(g.mobile);
-      return `<div class="item-row"><div class="info"><b>${esc(g.name)}</b><span>${esc(g.gatePass)} · ${esc(g.post)} · ${esc(g.mobile)} · ${atts.length} exam${atts.length===1?'':'s'} attempted</span></div>
-      <div class="actions"><button class="btn btn-sm" data-profile="${g.mobile}">View profile →</button></div></div>`;
-    }).join('')}
-  </div>`;
-}
-function bindAdminSearch(){
-  const inp = document.getElementById('searchInput');
-  if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
-    inp.addEventListener('input',()=>patch({searchQuery:inp.value})); }
-  document.querySelectorAll('[data-profile]').forEach(el=>el.addEventListener('click',()=>goPush({adminTab:'guardprofile', profileMobile:el.getAttribute('data-profile')})));
-}
+/* Note: the old standalone "Search Security Person" tab has been merged
+   into Master Data — see adminMasterDataGuardSearch() above. */
 function adminGuardProfile(){
   const g = findGuard(S.profileMobile);
   if(!g) return emptyState('warn','Guard not found','');
@@ -1938,7 +1954,7 @@ function adminGuardProfile(){
   const missedByMonth = months.map(m=>({ month:m, exams: examsForMonth(m.id).filter(ex=>!attemptedExamIds.has(ex.id)) })).filter(x=>x.exams.length>0);
   const attsChrono = atts.slice().sort((a,b)=>a.submittedAt-b.submittedAt);
   return `
-  <div class="crumb"><a data-backsearch="1">Search</a> <span>/</span> <span>${esc(g.name)}</span></div>
+  <div class="crumb"><a data-backsearch="1">Back</a> <span>/</span> <span>${esc(g.name)}</span></div>
   <div class="card" style="margin-bottom:16px;">
     <div class="panel-head"><div><h2>${esc(g.name)}</h2><p class="mono">${esc(g.gatePass)} · ${esc(g.post)} · ${esc(g.mobile)}</p></div>
       <button class="btn btn-ghost btn-sm" id="resetPinBtn" type="button">${icon('eye',14)} Reset PIN</button>
@@ -2101,6 +2117,10 @@ function scheduleTableRefresh(table){
     catch(err){ console.error('live sync refresh failed for', table, err); }
   }, 120);
 }
+async function refreshMonthsFast(){
+  try{ await TABLE_REFETCH.months(); if(isSafeToRepaint()) render(); }
+  catch(err){ console.error('months refresh failed', err); }
+}
 async function refreshGuardsFast(){
   try{
     const {data,error} = await sb.from('guards_public').select('*');
@@ -2117,14 +2137,47 @@ async function refreshEverything(){
   catch(err){ console.error('full refresh failed', err); }
   finally{ FULL_REFRESH_IN_FLIGHT = false; }
 }
+/* ---- live sync, scaled for many concurrent security persons ---------
+   Realtime connections and the "guards" poll are kept ADMIN-ONLY. With
+   50-100 guards potentially logged in at once, giving every single one
+   of them a Realtime channel would (a) eat most of the free tier's
+   200-connection budget just sitting idle, and (b) mean that every
+   single exam submission broadcasts a "table changed" event to every
+   other guard's browser too, each of whom would then needlessly refetch
+   the whole attempts table — multiplying load exactly when it matters
+   least (everyone mid-exam) and most when many people submit close
+   together. None of that data (other guards' registrations, other
+   guards' attempts, exam edits) is ever shown on a guard's own screen
+   anyway, so guards simply don't need it pushed to them.
+   Guards instead get a cheap, plain poll of just the small `months`
+   table (a handful of rows — this is what drives the lock/unlock
+   indicator) every few seconds, which reads as live to a person without
+   ever opening a Realtime socket or refetching the larger tables. A
+   slower full refresh underneath covers everyone as a safety net, so a
+   guard still sees a newly-published exam or a fixed question within
+   under a minute even without realtime. ----------------------------- */
+let ADMIN_CHANNEL = null;
+function syncAdminChannel(){
+  const isAdmin = SESSION && SESSION.role==='admin';
+  if(isAdmin && !ADMIN_CHANNEL){
+    ADMIN_CHANNEL = sb.channel('vses-live-admin');
+    Object.keys(TABLE_REFETCH).forEach(table=>{
+      ADMIN_CHANNEL.on('postgres_changes', {event:'*', schema:'public', table}, ()=>scheduleTableRefresh(table));
+    });
+    ADMIN_CHANNEL.subscribe();
+  } else if(!isAdmin && ADMIN_CHANNEL){
+    sb.removeChannel(ADMIN_CHANNEL);
+    ADMIN_CHANNEL = null;
+  }
+}
 function startLiveSync(){
-  const channel = sb.channel('vses-live');
-  Object.keys(TABLE_REFETCH).forEach(table=>{
-    channel.on('postgres_changes', {event:'*', schema:'public', table}, ()=>scheduleTableRefresh(table));
-  });
-  channel.subscribe();
-  setInterval(refreshGuardsFast, 2000);
-  setInterval(refreshEverything, 30000); // safety net if the realtime socket ever drops
+  syncAdminChannel();
+  setInterval(()=>{
+    syncAdminChannel(); // picks up login/logout without needing a page reload
+    if(SESSION && SESSION.role==='admin') refreshGuardsFast();
+    else refreshMonthsFast();
+  }, 2000);
+  setInterval(refreshEverything, 30000); // safety net for everyone (new exams, edits, and a fallback if Realtime ever drops for the admin)
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshEverything(); });
   window.addEventListener('focus', refreshEverything);
 }
