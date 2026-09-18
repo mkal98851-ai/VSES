@@ -87,6 +87,15 @@ button{font-family:inherit;}
 .btn-ghost:hover{color:var(--text);border-color:var(--line-2);}
 .btn-danger{border-color:var(--red);color:var(--red);background:transparent;}
 .btn-danger:hover{background:var(--red-soft);}
+.icon-del-btn{
+  width:30px;height:30px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--red);color:#fff;border:none;cursor:pointer;
+  transition:.15s background,.15s transform;
+}
+.icon-del-btn:hover{background:#c94951;}
+.icon-del-btn:active{transform:scale(.92);}
+.icon-del-btn .ic{width:14px;height:14px;}
 .btn-icon{padding:7px 9px;display:inline-flex;align-items:center;justify-content:center;}
 .btn-sm{padding:6px 11px;font-size:12.5px;}
 .btn-block{width:100%;justify-content:center;}
@@ -420,6 +429,27 @@ async function withBusy(form, fn){
   try{ await fn(); }
   catch(err){ console.error(err); alert('Something went wrong, please try again.\n' + (err&&err.message?err.message:err)); }
   finally{ if(btn){ btn.disabled = false; if(orig!=null) btn.textContent = orig; } }
+}
+/* ---- write helper: confirms a Supabase write actually changed a row.
+   With Row Level Security enabled, a write that a policy silently blocks
+   comes back from Postgrest with NO error at all — just 0 rows affected.
+   Every insert/update/delete in this app used to trust `error` alone, so a
+   blocked write looked identical to a successful one: the UI updated
+   optimistically and told the user it worked, but nothing was saved in
+   Postgres — the change then quietly "undid itself" the next time the
+   page (or another device) reloaded fresh data. Routing every write
+   through here turns that silent failure into a visible, honest error. */
+async function dbWrite(query, selectCols){
+  try{
+    const { data, error } = await query.select(selectCols||'*');
+    if(error) return { ok:false, error };
+    if(!data || data.length===0){
+      return { ok:false, error:{ message:'The database did not apply this change (0 rows affected). This almost always means a Row Level Security (RLS) policy on this table is blocking the write — ask whoever manages the Supabase project to check the INSERT/UPDATE/DELETE policies for this table.' } };
+    }
+    return { ok:true, data };
+  }catch(error){
+    return { ok:false, error };
+  }
 }
 function uid(p){ return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function fmtDateTime(ts){
@@ -989,8 +1019,8 @@ function bindExamRun(){
       answers: S.answers.slice(), score, total: qs.length, submittedAt: Date.now(), approvedRetake:false
     };
     sub.textContent = 'Submitting…';
-    sb.from('attempts').insert(toSnake(attempt)).then(({error})=>{
-      if(error){ console.error(error); alert('Exam could not be submitted. Please check your internet connection and try again.'); sub.disabled=false; sub.textContent='Submit exam'; return; }
+    dbWrite(sb.from('attempts').insert(toSnake(attempt))).then(({ok,error})=>{
+      if(!ok){ console.error(error); alert('Exam could not be submitted. Please check your internet connection and try again.\n\n'+(error&&error.message?error.message:'')); sub.disabled=false; sub.textContent='Submit exam'; return; }
       DB.attempts.push(attempt);
       go('guard-result', {attemptId: attempt.id, monthId:S.monthId});
     });
@@ -1238,8 +1268,8 @@ function bindAdminMonths(){
     const label = MONTH_NAMES[monthNum] + ' ' + yearNum;
     const month = {id:uid('mo'), label, monthNum, year:yearNum, createdAt:Date.now(), locked:false};
     withBusy(f, async ()=>{
-      const {error} = await sb.from('months').insert(toSnake(month));
-      if(error) throw error;
+      const {ok,error} = await dbWrite(sb.from('months').insert(toSnake(month)));
+      if(!ok) throw error;
       DB.months.push(month);
       S.newMonthSel = null; S.newYearSel = null;
       patch({});
@@ -1251,8 +1281,8 @@ function bindAdminMonths(){
     if(!m) return;
     const newVal = !m.locked;
     el.disabled = true;
-    sb.from('months').update({locked:newVal}).eq('id', id).then(({error})=>{
-      if(error){ console.error(error); alert('Could not update the lock status. Please try again.'); el.disabled=false; return; }
+    dbWrite(sb.from('months').update({locked:newVal}).eq('id', id)).then(({ok,error})=>{
+      if(!ok){ console.error(error); alert('Could not update the lock status.\n\n'+(error&&error.message?error.message:'Please try again.')); el.disabled=false; return; }
       m.locked = newVal;
       patch({});
     });
@@ -1262,8 +1292,8 @@ function bindAdminMonths(){
     if(!confirm('Delete this entire month? All its exam sections, questions and attempts will also be deleted.')) return;
     const id = el.getAttribute('data-delmonth');
     el.disabled = true; el.textContent = 'Deleting…';
-    sb.from('months').delete().eq('id', id).then(({error})=>{
-      if(error){ console.error(error); alert('Delete failed, please try again.'); el.disabled=false; el.textContent='Delete'; return; }
+    dbWrite(sb.from('months').delete().eq('id', id)).then(({ok,error})=>{
+      if(!ok){ console.error(error); alert('Delete failed.\n\n'+(error&&error.message?error.message:'Please try again.')); el.disabled=false; el.textContent='Delete'; return; }
       // cascade delete on the DB side already removed exams/questions/attempts under this month
       const examIds = DB.exams.filter(e=>e.monthId===id).map(e=>e.id);
       DB.exams = DB.exams.filter(e=>e.monthId!==id);
@@ -1341,8 +1371,8 @@ function bindAdminMonthDetail(){
     if(showNameHi && !fd.get('nameHi').trim()){ alert('Exam name (Hindi) is required because its checkbox is ticked.'); return; }
     const exam = {id:uid('ex'), monthId:S.adminMonthId, nameEn:fd.get('nameEn').trim(), nameHi:fd.get('nameHi').trim(), examType:fd.get('examType'), qLang:'hi', showNameEn, showNameHi, createdAt:Date.now()};
     withBusy(f, async ()=>{
-      const {error} = await sb.from('exams').insert(toSnake(exam));
-      if(error) throw error;
+      const {ok,error} = await dbWrite(sb.from('exams').insert(toSnake(exam)));
+      if(!ok) throw error;
       DB.exams.push(exam);
       patch({});
     });
@@ -1352,8 +1382,8 @@ function bindAdminMonthDetail(){
     if(!confirm('Delete this exam section and all its questions?')) return;
     const id = el.getAttribute('data-delexam');
     el.disabled = true; el.textContent = 'Deleting…';
-    sb.from('exams').delete().eq('id', id).then(({error})=>{
-      if(error){ console.error(error); alert('Delete failed, please try again.'); el.disabled=false; el.textContent='Delete'; return; }
+    dbWrite(sb.from('exams').delete().eq('id', id)).then(({ok,error})=>{
+      if(!ok){ console.error(error); alert('Delete failed.\n\n'+(error&&error.message?error.message:'Please try again.')); el.disabled=false; el.textContent='Delete'; return; }
       DB.exams = DB.exams.filter(e=>e.id!==id);
       DB.questions = DB.questions.filter(q=>q.examId!==id);
       DB.attempts = DB.attempts.filter(a=>a.examId!==id);
@@ -1460,15 +1490,15 @@ function bindAdminExamQuestions(){
     if(ex && ex.qLang!==val){
       const prev = ex.qLang;
       ex.qLang = val; resetQB(); patch({});
-      sb.from('exams').update({q_lang:val}).eq('id', ex.id).then(({error})=>{ if(error){ console.error(error); ex.qLang = prev; patch({}); } });
+      dbWrite(sb.from('exams').update({q_lang:val}).eq('id', ex.id)).then(({ok,error})=>{ if(!ok){ console.error(error); ex.qLang = prev; alert('Could not change the question language.\n\n'+(error&&error.message?error.message:'')); patch({}); } });
     }
   }));
   document.querySelectorAll('[data-delq]').forEach(el=>el.addEventListener('click',()=>{
     if(!confirm('Delete this question?')) return;
     const delId = el.getAttribute('data-delq');
     el.disabled = true; el.textContent = 'Deleting…';
-    sb.from('questions').delete().eq('id', delId).then(({error})=>{
-      if(error){ console.error(error); alert('Delete failed, please try again.'); el.disabled=false; el.textContent='Delete'; return; }
+    dbWrite(sb.from('questions').delete().eq('id', delId)).then(({ok,error})=>{
+      if(!ok){ console.error(error); alert('Delete failed.\n\n'+(error&&error.message?error.message:'Please try again.')); el.disabled=false; el.textContent='Delete'; return; }
       if(QB_STATE.editId===delId) resetQB();
       DB.questions = DB.questions.filter(q=>q.id!==delId);
       patch({});
@@ -1553,8 +1583,8 @@ function bindAdminExamQuestions(){
         published: publishedVal
       };
       withBusy(f, async ()=>{
-        const {error} = await sb.from('questions').update(toSnake(updated)).eq('id', QB_STATE.editId);
-        if(error) throw error;
+        const {ok,error} = await dbWrite(sb.from('questions').update(toSnake(updated)).eq('id', QB_STATE.editId));
+        if(!ok) throw error;
         if(q) Object.assign(q, updated);
         resetQB();
         patch({});
@@ -1571,8 +1601,8 @@ function bindAdminExamQuestions(){
         createdAt: Date.now()
       };
       withBusy(f, async ()=>{
-        const {error} = await sb.from('questions').insert(toSnake(question));
-        if(error) throw error;
+        const {ok,error} = await dbWrite(sb.from('questions').insert(toSnake(question)));
+        if(!ok) throw error;
         DB.questions.push(question);
         resetQB();
         patch({});
@@ -1585,8 +1615,8 @@ function bindAdminExamQuestions(){
     const drafts = questionsForExam(S.adminExamId).filter(q=>!isQPublished(q));
     if(drafts.length===0) return;
     publishAllBtn.disabled = true; publishAllBtn.textContent = 'Publishing…';
-    sb.from('questions').update({published:true}).in('id', drafts.map(q=>q.id)).then(({error})=>{
-      if(error){ console.error(error); alert('Publish failed, please try again.'); publishAllBtn.disabled=false; publishAllBtn.textContent='✓ Done — publish all drafts'; return; }
+    dbWrite(sb.from('questions').update({published:true}).in('id', drafts.map(q=>q.id))).then(({ok,error})=>{
+      if(!ok){ console.error(error); alert('Publish failed.\n\n'+(error&&error.message?error.message:'Please try again.')); publishAllBtn.disabled=false; publishAllBtn.textContent='✓ Done — publish all drafts'; return; }
       drafts.forEach(q=>{ q.published = true; });
       patch({});
     });
@@ -1672,8 +1702,8 @@ function bindAdminResults(){
     const att = DB.attempts.find(a=>a.id===el.getAttribute('data-approve'));
     if(!att) return;
     el.disabled = true; el.textContent = 'Please wait…';
-    sb.from('attempts').update({approved_retake:true}).eq('id', att.id).then(({error})=>{
-      if(error){ console.error(error); alert('Allow retry failed, please try again.'); el.disabled=false; el.textContent='Allow retry'; return; }
+    dbWrite(sb.from('attempts').update({approved_retake:true}).eq('id', att.id)).then(({ok,error})=>{
+      if(!ok){ console.error(error); alert('Allow retry failed.\n\n'+(error&&error.message?error.message:'Please try again.')); el.disabled=false; el.textContent='Allow retry'; return; }
       att.approvedRetake = true; patch({});
     });
   }));
@@ -1681,8 +1711,8 @@ function bindAdminResults(){
     if(!confirm('Permanently delete this result for this security person? This action cannot be undone.')) return;
     const delId = el.getAttribute('data-delatt');
     el.disabled = true;
-    sb.from('attempts').delete().eq('id', delId).then(({error})=>{
-      if(error){ console.error(error); alert('Delete failed, please try again.'); el.disabled=false; return; }
+    dbWrite(sb.from('attempts').delete().eq('id', delId)).then(({ok,error})=>{
+      if(!ok){ console.error(error); alert('Delete failed.\n\n'+(error&&error.message?error.message:'Please try again.')); el.disabled=false; return; }
       DB.attempts = DB.attempts.filter(a=>a.id!==delId);
       patch({});
     });
@@ -1794,10 +1824,10 @@ function adminMasterDataDetail(view){
     <div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary btn-sm" id="mdExportBtn">⬇ Export to Excel</button></div>
     <div class="search-box"><input type="text" id="mdSearchInput" placeholder="Search by name, gate pass or mobile…" value="${esc(S.mdSearchQuery||'')}"></div>
     ${filteredRows.length===0?emptyState('search','No security person found','Check the spelling and try again.'):
-    `<div class="table-wrap"><table><thead><tr>${showRank?'<th>Rank</th>':'<th>S.No.</th>'}<th>Name</th><th>Gate pass</th><th>Mobile</th><th>Post</th>${showRank?'<th>Marks</th><th>Percentage</th>':''}</tr></thead><tbody>
+    `<div class="table-wrap"><table><thead><tr>${showRank?'<th>Rank</th>':'<th>S.No.</th>'}<th>Name</th><th>Gate pass</th><th>Mobile</th><th>Post</th>${showRank?'<th>Marks</th><th>Percentage</th>':''}${view==='registered'?'<th></th>':''}</tr></thead><tbody>
     ${filteredRows.map((r,idx)=>{
       const g=r.g;
-      return `<tr><td class="mono">${showRank?r.rank:idx+1}</td><td>${esc(g.name)}</td><td class="mono">${esc(g.gatePass)}</td><td class="mono">${esc(g.mobile)}</td><td>${esc(g.post)}</td>${showRank?`<td class="mono">${r.achievedMarks}/${r.totalMarks}</td><td class="mono">${r.pct.toFixed(1)}%</td>`:''}</tr>`;
+      return `<tr><td class="mono">${showRank?r.rank:idx+1}</td><td>${esc(g.name)}</td><td class="mono">${esc(g.gatePass)}</td><td class="mono">${esc(g.mobile)}</td><td>${esc(g.post)}</td>${showRank?`<td class="mono">${r.achievedMarks}/${r.totalMarks}</td><td class="mono">${r.pct.toFixed(1)}%</td>`:''}${view==='registered'?`<td><button class="icon-del-btn" data-delguard="${esc(g.mobile)}" title="Remove security person">${icon('trash',14)}</button></td>`:''}</tr>`;
     }).join('')}
     </tbody></table></div>`}
   </div>`;
@@ -1826,6 +1856,17 @@ function bindAdminMasterDataDetail(){
     inp.addEventListener('input',()=>patch({mdSearchQuery:inp.value})); }
   const exp = document.getElementById('mdExportBtn');
   if(exp) exp.addEventListener('click',()=>exportMasterDataExcel(S.mdView));
+  document.querySelectorAll('[data-delguard]').forEach(el=>el.addEventListener('click',()=>{
+    const mobile = el.getAttribute('data-delguard');
+    const g = findGuard(mobile);
+    if(!confirm(`Permanently remove ${g?g.name:mobile} (${mobile}) from registered security persons?\n\nTheir past exam results will stay in Results, but they will need to register again (name, gate pass, new PIN) before they can log in or take any future exam.`)) return;
+    el.disabled = true;
+    dbWrite(sb.from('guards').delete().eq('mobile', mobile), 'mobile').then(({ok,error})=>{
+      if(!ok){ console.error(error); alert('Delete failed.\n\n'+(error&&error.message?error.message:'Please try again.')); el.disabled=false; return; }
+      DB.guards = DB.guards.filter(x=>x.mobile!==mobile);
+      patch({});
+    });
+  }));
 }
 function exportMasterDataExcel(view){
   let header, dataRows, title;
@@ -2001,10 +2042,92 @@ function bootScreen(msg, isError){
 document.getElementById('app').innerHTML = bootScreen('Loading data…');
 loadAllData().then(()=>{
   render();
+  startLiveSync();
 }).catch(err=>{
   console.error(err);
   document.getElementById('app').innerHTML = bootScreen('Data could not be loaded. Please check your internet connection and retry.\n\n('+(err&&err.message?err.message:err)+')', true);
 });
+
+/* ---- live sync -------------------------------------------------------
+   Root cause behind "sometimes it shows, sometimes it doesn't": DB was
+   only ever fetched once, at first page load. Any change made from a
+   different tab, browser or device (a new guard registering, an admin
+   locking a month, a result being deleted) was invisible to everyone
+   else until they did a full manual page reload.
+
+   This keeps every screen live using two mechanisms:
+   1. Supabase Realtime (a live Postgres change feed) for months, exams,
+      questions and attempts — the moment any device writes a row, every
+      other open tab/device is notified in well under a second and
+      quietly refetches just that table.
+   2. A fast 2-second poll of `guards_public` for registered security
+      persons. Realtime can only watch actual tables, not views — and
+      `guards_public` is deliberately a view (not the raw `guards`
+      table) so that a guard's PIN hash never has to reach the browser.
+      2 seconds reads as instant to a person, without ever putting PIN
+      data on a live broadcast channel.
+
+   Either way, a repaint only happens on screens where it cannot wipe
+   out something the person is mid-way through typing (an open question
+   editor, an in-progress exam, an unsaved PIN-reset form, etc are left
+   untouched — they simply pick up the fresh data next time the person
+   navigates there). A slow 30-second full refetch runs underneath both
+   as a safety net in case the realtime connection ever drops silently
+   (e.g. a flaky mobile network). ----------------------------------- */
+function isSafeToRepaint(){
+  if(['guard-dashboard','guard-month','guard-myexams'].includes(S.screen)) return true;
+  if(S.screen==='admin-dashboard'){
+    const tab = S.adminTab||'months';
+    if(tab==='guardprofile') return !S.showResetPin; // don't wipe an in-progress PIN reset
+    if(!['months','masterdata','results'].includes(tab)) return false; // exam/question editor has its own draft state
+    if(S.adminMonthId || S.adminExamId) return false; // inside a month/exam drill-down with its own add-form
+    return true;
+  }
+  return false;
+}
+const REFRESH_TIMERS = {};
+const TABLE_REFETCH = {
+  months:   async ()=>{ const {data,error}=await sb.from('months').select('*');   if(error) throw error; DB.months=(data||[]).map(toCamel); },
+  exams:    async ()=>{ const {data,error}=await sb.from('exams').select('*');    if(error) throw error; DB.exams=(data||[]).map(toCamel); },
+  questions:async ()=>{ const {data,error}=await sb.from('questions').select('*');if(error) throw error; DB.questions=(data||[]).map(toCamel); },
+  attempts: async ()=>{ const {data,error}=await sb.from('attempts').select('*'); if(error) throw error; DB.attempts=(data||[]).map(toCamel); },
+};
+function scheduleTableRefresh(table){
+  // debounce: a burst of changes to the same table (e.g. "publish all
+  // drafts" touching many questions at once) triggers only one refetch
+  clearTimeout(REFRESH_TIMERS[table]);
+  REFRESH_TIMERS[table] = setTimeout(async ()=>{
+    try{ await TABLE_REFETCH[table](); if(isSafeToRepaint()) render(); }
+    catch(err){ console.error('live sync refresh failed for', table, err); }
+  }, 120);
+}
+async function refreshGuardsFast(){
+  try{
+    const {data,error} = await sb.from('guards_public').select('*');
+    if(error) throw error;
+    DB.guards = (data||[]).map(guardRowToObj);
+    if(isSafeToRepaint()) render();
+  }catch(err){ console.error('guard refresh failed', err); }
+}
+let FULL_REFRESH_IN_FLIGHT = false;
+async function refreshEverything(){
+  if(FULL_REFRESH_IN_FLIGHT) return;
+  FULL_REFRESH_IN_FLIGHT = true;
+  try{ await loadAllData(); if(isSafeToRepaint()) render(); }
+  catch(err){ console.error('full refresh failed', err); }
+  finally{ FULL_REFRESH_IN_FLIGHT = false; }
+}
+function startLiveSync(){
+  const channel = sb.channel('vses-live');
+  Object.keys(TABLE_REFETCH).forEach(table=>{
+    channel.on('postgres_changes', {event:'*', schema:'public', table}, ()=>scheduleTableRefresh(table));
+  });
+  channel.subscribe();
+  setInterval(refreshGuardsFast, 2000);
+  setInterval(refreshEverything, 30000); // safety net if the realtime socket ever drops
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshEverything(); });
+  window.addEventListener('focus', refreshEverything);
+}
 </script>
 </body>
 </html>
