@@ -49,7 +49,7 @@ body{
 ::selection{background:var(--amber-soft);}
 a{color:inherit;}
 button{font-family:inherit;}
-.wrap{max-width:1100px;margin:0 auto;padding:0 20px;width:100%;}
+.wrap{max-width:1680px;margin:0 auto;padding:0 24px;width:100%;}
 .wrap-narrow{max-width:640px;margin:0 auto;padding:0 20px;width:100%;}
 
 /* ---- topbar ---- */
@@ -58,8 +58,8 @@ button{font-family:inherit;}
   background:var(--panel);
   position:sticky;top:0;z-index:20;
 }
-.topbar-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;max-width:1100px;margin:0 auto;}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;font-size:16px;}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;max-width:1680px;margin:0 auto;}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;font-size:16px;user-select:none;-webkit-user-select:none;-moz-user-select:none;}
 .brand-dot{width:9px;height:9px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 4px var(--amber-soft);flex-shrink:0;}
 .brand small{display:block;color:var(--muted);font-weight:500;font-size:11px;margin-top:1px;}
 .session-chip{display:flex;align-items:center;gap:10px;}
@@ -166,6 +166,7 @@ main{flex:1;padding:32px 0 60px;}
 .crumb a:hover{color:var(--amber);}
 
 /* ---- exam runner ---- */
+.exam-read{ max-width:860px; margin:0 auto; }
 .exam-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
 .progress-track{height:6px;background:var(--panel-2);border-radius:4px;overflow:hidden;margin:14px 0 26px;}
 .progress-fill{height:100%;background:var(--amber);transition:width .2s;}
@@ -254,7 +255,6 @@ tbody tr:hover{background:var(--panel-2);}
 }
 .search-box input:focus{outline:2px solid var(--amber);outline-offset:0;border-color:var(--amber);}
 
-footer.mini{text-align:center;padding:20px;color:var(--muted-2);font-size:12px;}
 .divider{height:1px;background:var(--line);margin:22px 0;}
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;}
 @media (max-width:600px){.stat-row{grid-template-columns:1fr 1fr;}}
@@ -349,6 +349,252 @@ body.secure-mode.secure-blurred .secure-overlay{display:flex;}
 }
 .secure-overlay-card b{display:block;margin-bottom:6px;color:var(--red);font-size:14px;}
 @media print{ body.secure-mode #app, body.secure-mode .topbar, body.secure-mode footer{ display:none!important; } }
+
+/* ---- admin action confirmation popup ---- */
+#confirmToastHost{
+  position:fixed; left:50%; top:22px; z-index:10000;
+  transform:translateX(-50%);
+  pointer-events:none;
+}
+.confirm-toast{
+  display:flex; align-items:center; gap:10px;
+  background:var(--panel-2);
+  border:1px solid var(--green);
+  box-shadow:0 10px 30px rgba(0,0,0,.35), 0 0 0 4px var(--green-soft);
+  border-radius:999px;
+  padding:10px 18px 10px 12px;
+  color:var(--text);
+  font-size:13.5px;
+  font-weight:600;
+  white-space:nowrap;
+  cursor:pointer;
+  pointer-events:auto;
+  opacity:0;
+  transform:translateY(-14px) scale(.96);
+  transition:opacity .22s ease, transform .22s cubic-bezier(.34,1.56,.64,1);
+}
+.confirm-toast.confirm-toast-show{ opacity:1; transform:translateY(0) scale(1); }
+.confirm-toast.confirm-toast-hide{ opacity:0; transform:translateY(-10px) scale(.97); }
+.confirm-toast-danger{ border-color:var(--red); box-shadow:0 10px 30px rgba(0,0,0,.35), 0 0 0 4px var(--red-soft); }
+.confirm-toast-icon{
+  display:flex; align-items:center; justify-content:center;
+  width:26px; height:26px; border-radius:50%; flex-shrink:0;
+  background:var(--green-soft);
+}
+.confirm-toast-danger .confirm-toast-icon{ background:var(--red-soft); }
+.confirm-toast-icon svg{ display:block; }
+.ct-circle{
+  stroke:var(--green); stroke-width:3;
+  stroke-dasharray:145; stroke-dashoffset:145;
+  animation:ctCircle .45s ease forwards;
+}
+.confirm-toast-danger .ct-circle{ stroke:var(--red); }
+.ct-check{
+  stroke:var(--green); stroke-width:4.5; stroke-linecap:round; stroke-linejoin:round;
+  stroke-dasharray:34; stroke-dashoffset:34;
+  animation:ctCheck .3s .35s ease forwards;
+}
+.confirm-toast-danger .ct-check{ stroke:var(--red); }
+@keyframes ctCircle{ to{ stroke-dashoffset:0; } }
+@keyframes ctCheck{ to{ stroke-dashoffset:0; } }
+@media (max-width:480px){
+  .confirm-toast{ font-size:12.5px; padding:9px 14px 9px 10px; max-width:88vw; white-space:normal; }
+}
+
+/* ================= PROFESSIONAL VISUAL REFRESH + MOTION ================= */
+
+/* Page transition — replays only when the visible screen actually changes
+   (not on every keystroke or answer click), so search boxes and the exam
+   runner stay flicker-free. */
+@keyframes pageEnter{
+  from{ opacity:0; transform:translateY(10px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+.page-enter{ animation:pageEnter .42s cubic-bezier(.22,.9,.32,1) both; }
+
+/* Depth background */
+body{
+  background:
+    radial-gradient(1100px 560px at 12% -8%, rgba(240,169,59,.09), transparent 60%),
+    radial-gradient(900px 520px at 108% 8%, rgba(91,141,239,.08), transparent 55%),
+    var(--bg);
+}
+
+/* Topbar — glass blur + gradient underline */
+.topbar{
+  background:rgba(18,26,46,.7);
+  backdrop-filter:blur(14px) saturate(140%);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);
+}
+.topbar::after{
+  content:''; position:absolute; left:0; right:0; bottom:-1px; height:1px;
+  background:linear-gradient(90deg, transparent, var(--amber) 20%, var(--blue) 55%, transparent 90%);
+  opacity:.6;
+}
+.brand-icon{
+  background:linear-gradient(140deg, #f5b658, var(--amber));
+  color:#211404;
+  box-shadow:0 0 0 4px var(--amber-soft), 0 4px 14px rgba(240,169,59,.25);
+  transition:transform .25s ease, box-shadow .25s ease;
+}
+.brand:hover .brand-icon{ transform:rotate(-8deg) scale(1.06); box-shadow:0 0 0 5px var(--amber-soft), 0 6px 18px rgba(240,169,59,.35); }
+
+/* Buttons — gradient + glow + shine sweep on hover */
+.btn{ position:relative; overflow:hidden; transition:.18s border-color, .18s background, .18s transform, .18s box-shadow; }
+.btn-primary{
+  background:linear-gradient(135deg, #f5b658, var(--amber));
+  box-shadow:0 2px 10px rgba(240,169,59,.22);
+}
+.btn-primary:hover{ box-shadow:0 6px 18px rgba(240,169,59,.4); transform:translateY(-1px); }
+.btn-primary::before{
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.35) 48%, transparent 66%);
+  transform:translateX(-120%); transition:transform .5s ease;
+}
+.btn-primary:hover::before{ transform:translateX(120%); }
+.btn:active{ transform:scale(.97); }
+
+/* Cards, tiles, role cards — soft depth + lift/glow on hover */
+.card{ box-shadow:0 1px 0 rgba(255,255,255,.02) inset, 0 10px 28px rgba(0,0,0,.18); transition:.2s border-color, .2s box-shadow; }
+.tile, .role-card{ box-shadow:0 6px 18px rgba(0,0,0,.16); transition:.2s border-color, .22s transform, .22s box-shadow; }
+.tile:hover, .role-card:hover{ box-shadow:0 14px 32px rgba(0,0,0,.28), 0 0 0 1px var(--amber-soft); }
+.role-card{ position:relative; overflow:hidden; }
+.role-card::after{
+  content:''; position:absolute; inset:0; pointer-events:none; opacity:0;
+  background:radial-gradient(220px 140px at 30% 0%, rgba(240,169,59,.14), transparent 70%);
+  transition:opacity .3s ease;
+}
+.role-card:hover::after{ opacity:1; }
+.role-card .icon{
+  background:linear-gradient(135deg, var(--amber-soft), rgba(240,169,59,.28));
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+.role-card:hover .icon{ transform:scale(1.1) rotate(-4deg); }
+
+/* Hero — floating gradient blobs + gradient headline */
+.hero{ position:relative; }
+.hero::before, .hero::after{
+  content:''; position:absolute; z-index:-1; border-radius:50%; filter:blur(60px); opacity:.5;
+  animation:heroFloat 9s ease-in-out infinite;
+}
+.hero::before{ width:280px; height:280px; background:var(--amber); top:-40px; left:10%; }
+.hero::after{ width:240px; height:240px; background:var(--blue); top:20px; right:8%; animation-delay:-4s; }
+@keyframes heroFloat{
+  0%,100%{ transform:translateY(0) scale(1); }
+  50%{ transform:translateY(18px) scale(1.06); }
+}
+.hero h1{
+  background:linear-gradient(135deg, var(--text), var(--amber) 130%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+
+/* Admin nav — active glow + hover nudge */
+.admin-nav button.active{ box-shadow:inset 0 0 0 1px var(--amber-soft); }
+.admin-nav button{ transition:.15s background, .15s color, .15s transform; }
+.admin-nav button:hover{ transform:translateX(2px); }
+
+/* Score ring — pop-in entrance */
+.score-ring{ animation:ringPop .5s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes ringPop{ from{ opacity:0; transform:scale(.7); } to{ opacity:1; transform:scale(1); } }
+.score-ring .num{ animation:numFade .4s .22s ease both; }
+@keyframes numFade{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+
+/* Badges — subtle live pulse for "open" state */
+.badge-open{ animation:badgePulse 2.2s ease-in-out infinite; }
+@keyframes badgePulse{ 0%,100%{ box-shadow:0 0 0 0 var(--amber-soft); } 50%{ box-shadow:0 0 0 5px transparent; } }
+
+/* ---- professional footer ---- */
+.site-footer{ margin-top:40px; position:relative; background:var(--panel); border-top:1px solid var(--line); }
+.site-footer::before{
+  content:''; position:absolute; top:-1px; left:0; right:0; height:1px;
+  background:linear-gradient(90deg, transparent, var(--amber) 20%, var(--blue) 55%, transparent 90%);
+  opacity:.6;
+}
+.footer-inner{ display:flex; justify-content:space-between; gap:24px; flex-wrap:wrap; padding:28px 20px 20px; }
+.footer-brand-row{ display:flex; align-items:center; gap:9px; font-weight:700; font-size:14.5px; margin-bottom:6px; }
+.footer-brand-icon{ width:24px; height:24px; border-radius:7px; }
+.footer-brand-icon .ic{ width:13px; height:13px; }
+.footer-brand p{ margin:0; color:var(--muted); font-size:12.5px; max-width:320px; line-height:1.5; }
+.footer-contact{ text-align:left; min-width:200px; }
+.footer-heading{ display:block; font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--muted-2); margin-bottom:8px; }
+.footer-contact-links{ display:flex; flex-direction:column; gap:6px; }
+.footer-contact-links a{ display:inline-flex; align-items:center; gap:7px; color:var(--muted); text-decoration:none; font-size:13px; transition:.15s color; }
+.footer-contact-links a .ic{ color:var(--amber); width:13px; height:13px; }
+.footer-contact-links a:hover{ color:var(--text); }
+.footer-muted{ color:var(--muted-2); font-size:12.5px; }
+.footer-address{ display:flex; align-items:flex-start; gap:7px; color:var(--muted); font-size:12.5px; margin-top:8px; line-height:1.5; }
+.footer-address .ic{ color:var(--amber); margin-top:1px; flex-shrink:0; width:13px; height:13px; }
+.footer-bottom{ border-top:1px solid var(--line); padding:14px 20px; text-align:center; color:var(--muted-2); font-size:12px; }
+@media (max-width:600px){ .footer-inner{ flex-direction:column; gap:18px; } }
+
+/* ================= MOBILE OPTIMISATION ================= */
+@media (max-width:600px){
+  .wrap, .wrap-narrow{ padding:0 14px; }
+  main{ padding:20px 0 40px; }
+
+  /* topbar — keep name / ID / logout from crowding or overlapping the brand */
+  .topbar-inner{ padding:10px 14px; gap:8px; }
+  .brand{ font-size:14px; gap:8px; min-width:0; }
+  .brand > div{ min-width:0; }
+  .brand small{ font-size:9.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .brand-icon{ width:22px; height:22px; }
+  .brand-icon .ic{ width:13px; height:13px; }
+  .session-chip{ gap:6px; flex-shrink:0; }
+  .session-chip .who{ max-width:112px; }
+  .session-chip .who b{ font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .session-chip .who span{ font-size:9.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+  .session-chip .btn{ padding:7px 10px; font-size:12px; }
+
+  /* hero */
+  .hero{ padding:34px 0 8px; }
+  .hero h1{ font-size:23px; line-height:1.28; }
+  .hero p{ font-size:13px; }
+  .hero::before{ width:180px; height:180px; }
+  .hero::after{ width:150px; height:150px; }
+
+  /* cards / panels */
+  .card{ padding:16px; }
+  .panel-head{ gap:10px; }
+  .panel-head h2{ font-size:16.5px; }
+  .panel-head p{ font-size:12px; }
+
+  /* exam question cards — the main overlap risk area, given extra breathing room */
+  .qcard{ padding:15px 14px 14px; }
+  .qtext{ font-size:14.5px; line-height:1.5; }
+  .qnum{ width:22px; height:22px; font-size:11px; margin-right:8px; }
+  .opt{ padding:10px 11px; font-size:13px; gap:9px; }
+  .opt .letter{ width:20px; height:20px; font-size:10.5px; }
+  .exam-meta{ gap:8px; }
+  .qlang-select button, .lang-toggle button{ padding:6px 10px; font-size:11px; }
+
+  /* item rows / admin lists — labels and action buttons stack instead of overlapping */
+  .item-row{ flex-wrap:wrap; padding:12px 13px; }
+  .item-row .actions{ width:100%; justify-content:flex-end; }
+  .q-edit-row{ padding:12px 13px; }
+  .q-edit-row .qtop{ flex-wrap:wrap; }
+
+  /* admin section nav */
+  .admin-nav button{ font-size:12.5px; padding:9px 11px; }
+
+  /* results table — smaller but still fully legible, scrolls horizontally */
+  table{ font-size:12.5px; }
+  thead th{ padding:9px 11px; font-size:10.5px; }
+  tbody td{ padding:9px 11px; }
+
+  /* score ring */
+  .score-ring{ width:118px; height:118px; }
+  .score-ring .num{ font-size:27px; }
+
+  /* footer */
+  .footer-inner{ padding:22px 14px 16px; }
+  .footer-brand p{ max-width:none; }
+  .footer-bottom{ padding:12px 14px; font-size:11px; }
+}
+@media (max-width:360px){
+  /* smallest phones only — drop the name/ID chip so nothing crowds the logout button */
+  .session-chip .who{ display:none; }
+  .brand small{ display:none; }
+}
 </style>
 </head>
 <body>
@@ -432,6 +678,43 @@ async function withBusy(form, fn){
   catch(err){ console.error(err); alert('Something went wrong, please try again.\n' + (err&&err.message?err.message:err)); }
   finally{ if(btn){ btn.disabled = false; if(orig!=null) btn.textContent = orig; } }
 }
+/* ---- confirmation popup: shown after an admin action has actually been
+   saved to the database, so the admin gets clear visual proof that what
+   they clicked (add question, delete, lock, publish, etc.) has gone
+   through. Auto-dismisses; can also be tapped/clicked to close early. */
+let CONFIRM_TOAST_TIMER = null;
+function showConfirmToast(message, kind){
+  let host = document.getElementById('confirmToastHost');
+  if(!host){
+    host = document.createElement('div');
+    host.id = 'confirmToastHost';
+    host.setAttribute('aria-live','polite');
+    document.body.appendChild(host);
+  }
+  host.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'confirm-toast' + (kind==='danger' ? ' confirm-toast-danger' : '');
+  card.innerHTML = `
+    <span class="confirm-toast-icon">
+      <svg viewBox="0 0 52 52" width="22" height="22"><circle class="ct-circle" cx="26" cy="26" r="23" fill="none"/><path class="ct-check" fill="none" d="M14 27l7 7 17-17"/></svg>
+    </span>
+    <span class="confirm-toast-msg">${message}</span>
+  `;
+  card.addEventListener('click', ()=> dismissConfirmToast());
+  host.appendChild(card);
+  requestAnimationFrame(()=> card.classList.add('confirm-toast-show'));
+  if(CONFIRM_TOAST_TIMER) clearTimeout(CONFIRM_TOAST_TIMER);
+  CONFIRM_TOAST_TIMER = setTimeout(dismissConfirmToast, 2600);
+}
+function dismissConfirmToast(){
+  const host = document.getElementById('confirmToastHost');
+  if(!host) return;
+  const card = host.querySelector('.confirm-toast');
+  if(!card) return;
+  card.classList.remove('confirm-toast-show');
+  card.classList.add('confirm-toast-hide');
+  setTimeout(()=>{ if(host) host.innerHTML=''; }, 220);
+}
 /* ---- write helper: confirms a Supabase write actually changed a row.
    With Row Level Security enabled, a write that a policy silently blocks
    comes back from Postgrest with NO error at all — just 0 rows affected.
@@ -441,12 +724,13 @@ async function withBusy(form, fn){
    Postgres — the change then quietly "undid itself" the next time the
    page (or another device) reloaded fresh data. Routing every write
    through here turns that silent failure into a visible, honest error. */
-async function dbWrite(query, selectCols){
+async function dbWrite(query, selectCols, tableLabel){
   try{
     const { data, error } = await query.select(selectCols||'*');
     if(error) return { ok:false, error };
     if(!data || data.length===0){
-      return { ok:false, error:{ message:'The database did not apply this change (0 rows affected). This almost always means a Row Level Security (RLS) policy on this table is blocking the write — ask whoever manages the Supabase project to check the INSERT/UPDATE/DELETE policies for this table.' } };
+      const where = tableLabel ? ` on the "${tableLabel}" table` : ' on this table';
+      return { ok:false, error:{ message:`The database did not apply this change (0 rows affected). This almost always means a Row Level Security (RLS) policy${where} is blocking the write — open the Supabase SQL editor and make sure a DELETE policy exists${where} for the anon role (see the SQL block your developer gave you).` } };
     }
     return { ok:true, data };
   }catch(error){
@@ -479,30 +763,47 @@ const ICONS = {
   empty:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M8 14h2"/></svg>',
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13"/><path d="M10 11v6M14 11v6"/></svg>',
   lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
-  unlock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 017.6-1.8"/></svg>'
+  unlock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 017.6-1.8"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a1.7 1.7 0 000-3l-1-.3a7.4 7.4 0 00-.8-1.9l.5-.9a1.7 1.7 0 00-2.4-2.4l-.9.5a7.4 7.4 0 00-1.9-.8l-.3-1a1.7 1.7 0 00-3 0l-.3 1a7.4 7.4 0 00-1.9.8l-.9-.5a1.7 1.7 0 00-2.4 2.4l.5.9a7.4 7.4 0 00-.8 1.9l-1 .3a1.7 1.7 0 000 3l1 .3a7.4 7.4 0 00.8 1.9l-.5.9a1.7 1.7 0 002.4 2.4l.9-.5a7.4 7.4 0 001.9.8l.3 1a1.7 1.7 0 003 0l.3-1a7.4 7.4 0 001.9-.8l.9.5a1.7 1.7 0 002.4-2.4l-.5-.9a7.4 7.4 0 00.8-1.9l1-.3z"/></svg>',
+  mail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 10.8a15.5 15.5 0 006.6 6.6l2.2-2.2a1.5 1.5 0 011.5-.4c1 .3 2.1.5 3.2.5a1.5 1.5 0 011.5 1.5V20a1.5 1.5 0 01-1.5 1.5C11.6 21.5 2.5 12.4 2.5 3.5A1.5 1.5 0 014 2h3.2a1.5 1.5 0 011.5 1.5c0 1.1.2 2.2.5 3.2a1.5 1.5 0 01-.4 1.5l-2.2 2.2z"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>'
 };
 function icon(name, size){ return `<span class="ic" style="--ic-size:${size||18}px;">${ICONS[name]||''}</span>`; }
 
 let DB = {guards:[], admins:[], months:[], exams:[], questions:[], attempts:[]};
+/* ---- site settings (editable footer / contact info) ----
+   Backed by a small `settings` table (one row, id='site') when it exists,
+   with a localStorage mirror so the footer still works instantly and even
+   if that table hasn't been created in Supabase yet. */
+let SITE_SETTINGS = {
+  id:'site', orgName:'Vedanta Security Exam Portal',
+  supportEmail:'', supportPhone:'', address:'', copyrightText:''
+};
+const SITE_SETTINGS_LS_KEY = 'vses_site_settings';
+async function loadSiteSettings(){
+  try{
+    const cached = localStorage.getItem(SITE_SETTINGS_LS_KEY);
+    if(cached) Object.assign(SITE_SETTINGS, JSON.parse(cached));
+  }catch(e){ /* ignore */ }
+  try{
+    const { data, error } = await sb.from('settings').select('*').eq('id','site').maybeSingle();
+    if(!error && data) Object.assign(SITE_SETTINGS, toCamel(data));
+  }catch(e){ /* settings table not created yet — defaults/local cache are used */ }
+}
 let S = { screen:'home' }; // session-level UI state
 let SESSION = JSON.parse(localStorage.getItem('ssms_session_v1')||'null'); // {role, mobile}
 
 function setSession(sess){ SESSION = sess; localStorage.setItem('ssms_session_v1', JSON.stringify(sess)); }
 function clearSession(){ SESSION = null; localStorage.removeItem('ssms_session_v1'); HISTORY = []; }
 
-/* ---- navigation history, for the top-left Back button AND the
-   phone/browser's own back button/gesture ----------------------------
-   Previously this app tracked its own screen history purely in memory
-   (the HISTORY array) with no matching browser history entries. That
-   meant the on-screen "← Back" link worked, but the phone's physical
-   back button / browser back button did not know the app had "pages" at
-   all — pressing it would leave the site entirely instead of stepping
-   back one screen the way it does on an ordinary website.
-   Fix: every in-app navigation also pushes one browser history entry
-   (history.pushState). The on-screen Back link now just calls
-   history.back(), and a single popstate listener does the actual work
-   of restoring the previous screen — so the visible Back button and the
-   device's own back button always do exactly the same thing. ------- */
+/* ---- navigation history, driving the phone/browser's own physical back
+   button/gesture only — there is no on-screen Back button anywhere in this
+   app anymore. Every in-app navigation pushes one browser history entry
+   (history.pushState); a single popstate listener below does the work of
+   restoring the previous screen, confirming before an in-progress exam is
+   discarded, and confirming + logging the person out when back is pressed
+   with nothing left inside the app to go back to. ------------------------ */
 let HISTORY = [];
 function go(screen, extra){
   if(S && S.screen) HISTORY.push(S);
@@ -511,14 +812,25 @@ function go(screen, extra){
   try{ history.pushState({vsesNav:true}, ''); }catch(e){}
   render();
 }
-function goBack(){
-  if(HISTORY.length===0) return;
-  try{ history.back(); }catch(e){ S = HISTORY.pop(); window.scrollTo({top:0,behavior:'instant'}); render(); }
-}
 function patch(extra){ S = Object.assign({}, S, extra); render(); }
+/* Switching between top-level sections (Master Data / Months & Exams /
+   Results) is NOT a drill-down, so it must not stack up back-history like an
+   undo/redo list. Each section is a fresh "root": HISTORY is cleared, any
+   open sub-view (month detail, exam editor, guard profile, master-data box)
+   is dropped, and the browser entry is replaced (not added). Pressing back
+   on a section's home page therefore has nothing left to step back to and
+   shows the logout confirmation, while drilling deeper from that section
+   (goPush) still steps back one level at a time. */
+function goRoot(extra){
+  HISTORY = [];
+  S = Object.assign({screen:'admin-dashboard'}, extra||{});
+  window.scrollTo({top:0,behavior:'instant'});
+  try{ history.replaceState({vsesNav:true}, ''); }catch(e){}
+  render();
+}
 /* like go(), but stays on the same top-level screen while drilling into a
    sub-view (e.g. admin: months -> month detail -> question editor). Pushes
-   the current state onto HISTORY so the topbar Back button steps back one
+   the current state onto HISTORY so the physical/device back button steps back one
    sub-view at a time instead of jumping straight out to the login page. */
 function goPush(extra){
   HISTORY.push(S);
@@ -527,22 +839,51 @@ function goPush(extra){
   try{ history.pushState({vsesNav:true}, ''); }catch(e){}
   render();
 }
+/* Used right after a successful login/registration. Unlike go(), this does
+   NOT push the login/auth screen onto HISTORY — the dashboard the person
+   lands on becomes the app's fresh "root" screen, with nothing behind it.
+   That way one back-button press from here means "there is nothing left
+   inside the app", which is exactly when the exit-confirmation + auto
+   logout in the popstate listener below should kick in — instead of
+   quietly showing the login form again while the session is still active. */
+function enterApp(screen, extra){
+  HISTORY = [];
+  S = Object.assign({screen}, extra||{});
+  window.scrollTo({top:0,behavior:'instant'});
+  try{ history.pushState({vsesNav:true}, ''); }catch(e){}
+  render();
+}
 window.addEventListener('popstate', ()=>{
-  if(S && S.screen==='guard-exam-run'){
+  if(S && S.screen==='guard-exam-run' && !S.submitted){
     // Never let a stray back-button press quietly throw away an in-progress
     // exam and its answers — confirm first, and if the person cancels,
     // push the browser back to where it was so they stay on the exam.
     const leave = confirm('Are you sure you want to leave? Your exam progress and answers will be lost.');
     if(!leave){ try{ history.pushState({vsesNav:true}, ''); }catch(e){} return; }
   }
+  if(HISTORY.length===0 && SESSION){
+    // Nothing left inside the app to step back to — this is the screen
+    // reached right after login (select-month for a guard, the dashboard
+    // for an admin). A native app asks before exiting instead of silently
+    // dropping the session, so do the same here: confirm, and only on
+    // "OK" log the person out and land on the login screen. On "Cancel",
+    // push the browser forward again so they stay exactly where they were.
+    const exit = confirm('Are you sure you want to exit? You will be logged out.');
+    if(!exit){ try{ history.pushState({vsesNav:true}, ''); }catch(e){} return; }
+    clearSession();
+    enterApp('home');
+    return;
+  }
+  if(S && S.adminTab==='exam') resetQB();
   if(HISTORY.length>0){
     S = HISTORY.pop();
     window.scrollTo({top:0,behavior:'instant'});
     render();
   }
-  // if HISTORY is already empty there is nothing left inside the app to
-  // go back to, so the browser is simply allowed to leave the page as it
-  // normally would — exactly like pressing back on any other website.
+  // if HISTORY is already empty (and no session is active) there is nothing
+  // left inside the app to go back to, so the browser is simply allowed to
+  // leave the page as it normally would — exactly like pressing back on any
+  // other website.
 });
 
 function findGuard(mobile){ return DB.guards.find(g=>g.mobile===mobile); }
@@ -605,6 +946,21 @@ function masterDataAttendance(){
   });
   return { attend, notAttend };
 }
+/* For a "Not Attend" guard: which exam types (within the current month/year/
+   exam-type scope) they have not attempted yet — e.g. "Post Psara, Human rights". */
+/* Readable label for an exam everywhere the admin sees it. Some exams have an
+   empty English name (only exam type / Hindi name set), which used to make
+   chips and table cells render blank — so fall back type -> name -> Hindi. */
+function examLabel(ex){
+  if(!ex) return '-';
+  const name = (ex.nameEn||'').trim() || (ex.nameHi||'').trim();
+  if(ex.examType && name && name!==ex.examType) return ex.examType + ' — ' + name;
+  return ex.examType || name || 'Exam';
+}
+function missedExamTypesFor(mobile, examsToCheck){
+  const missed = examsToCheck.filter(ex=>!DB.attempts.some(a=>a.guardMobile===mobile && a.examId===ex.id));
+  return [...new Set(missed.map(ex=>ex.examType || ex.nameEn || ex.nameHi || 'Exam'))];
+}
 
 /* ---- exam name headline (security-person side): controlled by admin's
    "Exam name (English)" / "Exam name (Hindi)" checkboxes. Older exams saved
@@ -636,9 +992,13 @@ function examTypeChip(ex){
 
 /* ============ RENDER ROOT ============ */
 const SECURE_SCREENS = ['guard-exam-run','guard-review'];
+let LAST_RENDER_KEY = null;
 function render(){
   const app = document.getElementById('app');
-  app.innerHTML = topbarHtml() + '<main><div class="wrap" id="mainwrap"></div></main>' + footerHtml();
+  const animKey = [S.screen,S.adminTab,S.adminMonthId,S.adminExamId,S.profileMobile,S.attemptId].join('|');
+  const isNewScreen = animKey !== LAST_RENDER_KEY;
+  LAST_RENDER_KEY = animKey;
+  app.innerHTML = topbarHtml() + '<main><div class="wrap'+(isNewScreen?' page-enter':'')+'" id="mainwrap"></div></main>' + footerHtml();
   const mount = document.getElementById('mainwrap');
   mount.innerHTML = renderScreen();
   bindGlobal();
@@ -694,23 +1054,53 @@ function topbarHtml(){
   } else {
     right = `<button class="btn btn-ghost btn-sm" data-act="home">Home</button>`;
   }
-  const backBtn = HISTORY.length>0 ? `<button class="btn btn-ghost btn-sm" data-act="back" title="Back to previous page" style="flex-shrink:0;">← Back</button>` : '';
   return `<div class="topbar"><div class="topbar-inner">
     <div style="display:flex;align-items:center;gap:12px;min-width:0;">
-      ${backBtn}
       <div class="brand" style="cursor:pointer" data-act="home"><span class="brand-icon">${icon('shield',15)}</span><div>VSES<small>Vedanta Security Examination System</small></div></div>
     </div>
     ${right}
   </div></div>`;
 }
 function footerHtml(){
-  return `<footer class="mini">Internal training &amp; assessment tool · demo build</footer>`;
+  const year = new Date().getFullYear();
+  const org = esc(SITE_SETTINGS.orgName || 'Vedanta Security Exam Portal');
+  const copyright = SITE_SETTINGS.copyrightText ? esc(SITE_SETTINGS.copyrightText) : `© ${year} ${org}. All rights reserved.`;
+  const contactBits = [];
+  if(SITE_SETTINGS.supportEmail) contactBits.push(`<a href="mailto:${esc(SITE_SETTINGS.supportEmail)}">${icon('mail',13)}${esc(SITE_SETTINGS.supportEmail)}</a>`);
+  if(SITE_SETTINGS.supportPhone) contactBits.push(`<a href="tel:${esc(SITE_SETTINGS.supportPhone.replace(/\s+/g,''))}">${icon('phone',13)}${esc(SITE_SETTINGS.supportPhone)}</a>`);
+  const addressLine = SITE_SETTINGS.address ? `<div class="footer-address">${icon('pin',13)}<span>${esc(SITE_SETTINGS.address)}</span></div>` : '';
+  return `<footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <div class="footer-brand-row"><span class="brand-icon footer-brand-icon">${icon('shield',15)}</span><b>${org}</b></div>
+        <p>Monthly security assessments for control-room staff.</p>
+      </div>
+      <div class="footer-contact">
+        <span class="footer-heading">Contact</span>
+        <div class="footer-contact-links">${contactBits.length?contactBits.join(''):'<span class="footer-muted">Contact your site admin for support.</span>'}</div>
+        ${addressLine}
+      </div>
+    </div>
+    <div class="footer-bottom"><span>${copyright}</span></div>
+  </footer>`;
 }
 
+let LAST_HOME_CLICK = 0;
 function bindGlobal(){
-  document.querySelectorAll('[data-act="home"]').forEach(el=>el.addEventListener('click',()=>{ HISTORY=[]; go('home'); }));
-  document.querySelectorAll('[data-act="logout"]').forEach(el=>el.addEventListener('click',()=>{ clearSession(); go('home'); }));
-  document.querySelectorAll('[data-act="back"]').forEach(el=>el.addEventListener('click',goBack));
+  document.querySelectorAll('[data-act="home"]').forEach(el=>{
+    /* double-click used to fire the click handler twice in a row (and could
+       highlight the brand text) — this makes a rapid double-click a no-op:
+       the first click still navigates home, the second within 500ms (and any
+       native dblclick text-selection) is swallowed. */
+    el.addEventListener('dblclick', e=>{ e.preventDefault(); e.stopPropagation(); });
+    el.addEventListener('click', e=>{
+      const now = Date.now();
+      if(now - LAST_HOME_CLICK < 500){ e.preventDefault(); return; }
+      LAST_HOME_CLICK = now;
+      HISTORY=[]; go('home');
+    });
+  });
+  document.querySelectorAll('[data-act="logout"]').forEach(el=>el.addEventListener('click',()=>{ clearSession(); enterApp('home'); }));
 }
 
 /* ============ SCREEN ROUTER ============ */
@@ -753,7 +1143,7 @@ function screenHome(){
   return `
   <div class="hero">
     <h1>Vedanta Security Exam Portal</h1>
-    <p>Monthly security assessments for control-room staff. Register once with your company mobile number, then take each month's exams from your phone.</p>
+    <p>Monthly Security Assessment: Register once with your mobile number and company gate pass number, then complete your monthly assessment online using your mobile phone.</p>
     <div class="role-grid">
       <div class="role-card" data-go="guard"><div class="icon">${icon('shield',20)}</div><h3>Security Personnel</h3><p>Register or log in with your mobile number to take this month's exams.</p></div>
       <div class="role-card" data-go="admin"><div class="icon">${icon('folder',20)}</div><h3>Admin</h3><p>Create months, exam sections and questions, and review everyone's results.</p></div>
@@ -844,7 +1234,7 @@ function bindGuardAuth(){
       const existing = findGuard(mobile);
       if(existing) Object.assign(existing, guard); else DB.guards.push(guard);
       setSession({role:'guard', mobile, name: guard.name, gatePass: guard.gatePass, post: guard.post});
-      go('guard-dashboard');
+      enterApp('guard-dashboard');
     });
   });
   const rf = document.getElementById('regForm');
@@ -871,7 +1261,7 @@ function bindGuardAuth(){
       const guard = { mobile: row.mobile, name: row.name, gatePass: row.gate_pass, post: row.post, seenExams: [] };
       DB.guards.push(guard);
       setSession({role:'guard', mobile, name: guard.name, gatePass: guard.gatePass, post: guard.post});
-      go('guard-dashboard');
+      enterApp('guard-dashboard');
     });
   });
 }
@@ -926,7 +1316,6 @@ function screenGuardMonth(){
   if(!m) return emptyState('warn','Month not found','Go back to the dashboard.');
   const exams = examsForMonth(m.id);
   return `
-  <div class="crumb"><a data-back="dash">Months</a> <span>/</span> <span>${esc(m.label)}</span></div>
   <div class="panel-head"><div><h2>${esc(m.label)}</h2><p>This month's exam sections are listed below.</p></div></div>
   ${exams.length===0 ? emptyState('doc','No exam in this month yet','Exam sections will appear here once the admin creates them.') :
   `<div class="grid">${exams.map(ex=>{
@@ -946,7 +1335,6 @@ function screenGuardMonth(){
   `;
 }
 function bindGuardMonth(){
-  const b = document.querySelector('[data-back="dash"]'); if(b) b.addEventListener('click',()=>go('guard-dashboard'));
   document.querySelectorAll('.tile[data-exam]').forEach(el=>{
     el.addEventListener('click',()=>{
       const examId = el.getAttribute('data-exam');
@@ -972,7 +1360,6 @@ function screenExamLang(){
   const qs = publishedQuestionsForExam(ex.id);
   return `
   <div class="wrap-narrow">
-  <div class="crumb"><a data-back="month">${esc(monthById(S.monthId).label)}</a> <span>/</span> <span>${esc(examHeadlinePlain(ex))}</span></div>
   <div class="card" style="text-align:center;">
     <h2 style="margin-top:0;">${examHeadlineHtml(ex)}${examTypeChip(ex)}</h2>
     <p style="color:var(--muted);font-size:13.5px;">${qs.length} questions · 1 mark each · Total ${qs.length} marks<br>All questions are compulsory. You can attempt this exam once until it is re-approved.</p>
@@ -986,7 +1373,6 @@ function screenExamLang(){
   </div>`;
 }
 function bindExamLang(){
-  const b = document.querySelector('[data-back="month"]'); if(b) b.addEventListener('click',()=>go('guard-month',{monthId:S.monthId}));
   document.querySelectorAll('[data-lang]').forEach(el=>{
     el.addEventListener('click',()=>{
       const qs = publishedQuestionsForExam(S.examId);
@@ -1003,6 +1389,7 @@ function screenExamRun(){
   const answered = S.answers.filter(a=>a!==null).length;
   const showToggle = !ex.qLang || ex.qLang==='both';
   return `
+  <div class="exam-read">
   <div class="exam-meta">
     <div><h2 style="margin:0;">${examHeadlineHtml(ex)}${examTypeChip(ex)}</h2><p style="margin:2px 0 0;color:var(--muted);font-size:13px;">${answered} / ${qs.length} answered</p></div>
     ${showToggle?`<div class="lang-toggle">
@@ -1026,6 +1413,7 @@ function screenExamRun(){
   }).join('')}
   <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
     <button class="btn btn-primary" id="submitExam" ${answered<qs.length?'disabled':''}>Submit exam${answered<qs.length?` (${qs.length-answered} left)`:''}</button>
+  </div>
   </div>
   `;
 }
@@ -1053,6 +1441,9 @@ function bindExamRun(){
     dbWrite(sb.from('attempts').insert(toSnake(attempt))).then(({ok,error})=>{
       if(!ok){ console.error(error); alert('Exam could not be submitted. Please check your internet connection and try again.\n\n'+(error&&error.message?error.message:'')); sub.disabled=false; sub.textContent='Submit exam'; return; }
       DB.attempts.push(attempt);
+      S.submitted = true; // mark this exam-run screen as already-submitted, so a later
+                           // back-button press that returns to it doesn't wrongly warn
+                           // "your exam progress will be lost" (nothing is left to lose).
       go('guard-result', {attemptId: attempt.id, monthId:S.monthId});
     });
   });
@@ -1083,27 +1474,37 @@ function screenResult(){
 function bindResult(){
   document.querySelector('[data-act2="back"]').addEventListener('click',()=>go('guard-month',{monthId:S.monthId}));
   document.querySelector('[data-act2="review"]').addEventListener('click',()=>go('guard-review',{attemptId:S.attemptId, from:'guard-month', monthId:S.monthId}));
+  const numEl = document.querySelector('.score-ring .num');
+  if(numEl){
+    const target = parseInt(numEl.textContent,10) || 0;
+    if(target>0){
+      const dur = 700, start = performance.now();
+      const step = now=>{
+        const p = Math.min(1,(now-start)/dur);
+        numEl.textContent = Math.round(target * (1-Math.pow(1-p,3)));
+        if(p<1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+  }
 }
 
 /* ============ MY EXAMS (guard) ============ */
 function screenMyExams(){
   const list = allAttemptsForGuard(SESSION.mobile);
   return `
-  <div class="crumb"><a data-back="dash">Dashboard</a> <span>/</span> <span>My previous exams</span></div>
   <div class="panel-head"><div><h2>My previous exams</h2><p>All the exams you have attempted are listed here.</p></div></div>
   ${list.length===0 ? emptyState('doc','No exam attempted yet','Select a month to start taking an exam.') :
-  `<div class="table-wrap"><table><thead><tr><th>Exam</th><th>Type</th><th>Month</th><th>Date</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>
+  `<div class="table-wrap"><table><thead><tr><th>Exam</th><th>Type</th><th>Month</th><th>Date</th><th>Score</th><th></th></tr></thead><tbody>
     ${list.map(a=>{
       const ex = examById(a.examId); const m = monthById(ex.monthId); const dt = fmtDateTime(a.submittedAt);
       return `<tr><td>${esc(examHeadlinePlain(ex))}</td><td>${ex.examType?esc(ex.examType):'-'}</td><td>${esc(m?m.label:'-')}</td><td class="mono">${dt.date} ${dt.time}</td><td class="mono">${a.score}/${a.total}</td>
-      <td>${a.approvedRetake?'<span class="badge badge-open">Re-attempt open</span>':'<span class="badge badge-locked">Locked</span>'}</td>
       <td><button class="btn btn-sm" data-view="${a.id}">View</button></td></tr>`;
     }).join('')}
   </tbody></table></div>`}
   `;
 }
 function bindMyExams(){
-  const b = document.querySelector('[data-back="dash"]'); if(b) b.addEventListener('click',()=>go('guard-dashboard'));
   document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>go('guard-review',{attemptId:el.getAttribute('data-view'), from:'guard-myexams'})));
 }
 
@@ -1117,12 +1518,11 @@ function screenReview(mode){
   const dt = fmtDateTime(att.submittedAt);
   const lang = S.reviewLang || att.lang || 'en';
   const showToggle = !ex.qLang || ex.qLang==='both';
-  const crumbName = mode==='admin' ? ex.nameEn : examHeadlinePlain(ex);
   const headline = mode==='admin'
     ? `${esc(ex.nameEn)} <span style="color:var(--muted);font-weight:500;">/ ${esc(ex.nameHi)}</span>`
     : examHeadlineHtml(ex);
   return `
-  <div class="crumb"><a data-back="1">${mode==='admin'?'Back':'Back'}</a> <span>/</span> <span>Review · ${esc(crumbName)}</span></div>
+  <div class="exam-read">
   <div class="panel-head">
     <div>
       <h2>${headline}${ex.examType?` <span class="chip">${esc(ex.examType)}</span>`:''}</h2>
@@ -1157,10 +1557,10 @@ function screenReview(mode){
       </div>
     </div>`;
   }).join('')}
+  </div>
   `;
 }
 function bindReview(){
-  document.querySelector('[data-back]').addEventListener('click', goBack);
   document.querySelectorAll('[data-rlang]').forEach(el=>el.addEventListener('click',()=>patch({reviewLang:el.getAttribute('data-rlang')})));
 }
 
@@ -1199,7 +1599,7 @@ function bindAdminAuth(){
       if(error) throw error;
       if(!data || data.length===0){ patch({formError:'Incorrect mobile number or password.'}); return; }
       setSession({role:'admin', mobile, name: data[0].name});
-      go('admin-dashboard',{adminTab:'months'});
+      enterApp('admin-dashboard',{adminTab:'months'});
     });
   });
 }
@@ -1211,6 +1611,7 @@ function screenAdminDashboard(){
     ['masterdata',icon('chart',15),'Master Data'],
     ['months',icon('calendar',15),'Months &amp; Exams'],
     ['results',icon('chart',15),'Results'],
+    ['settings',icon('gear',15),'Site Settings'],
   ];
   return `
   <div class="admin-layout">
@@ -1226,10 +1627,11 @@ function adminContent(tab){
   if(tab==='exam') return adminExamQuestions();
   if(tab==='results') return adminResults();
   if(tab==='guardprofile') return adminGuardProfile();
+  if(tab==='settings') return adminSiteSettings();
   return adminMonths();
 }
 function bindAdminDashboard(){
-  document.querySelectorAll('[data-navto]').forEach(el=>el.addEventListener('click',()=>{ resetQB(); goPush({adminTab:el.getAttribute('data-navto'), formError:null}); }));
+  document.querySelectorAll('[data-navto]').forEach(el=>el.addEventListener('click',()=>{ resetQB(); goRoot({adminTab:el.getAttribute('data-navto')}); }));
   bindAdminContent(S.adminTab||'months');
 }
 function bindAdminContent(tab){
@@ -1238,6 +1640,73 @@ function bindAdminContent(tab){
   if(tab==='exam') return bindAdminExamQuestions();
   if(tab==='results') return bindAdminResults();
   if(tab==='guardprofile') return bindAdminGuardProfile();
+  if(tab==='settings') return bindAdminSiteSettings();
+}
+
+/* --- Admin: Site settings (footer / contact, editable) --- */
+function adminSiteSettings(){
+  const s = SITE_SETTINGS;
+  const year = new Date().getFullYear();
+  return `
+  <div class="card">
+    <div class="panel-head"><div><h2>Site settings</h2><p>Customise the footer shown at the bottom of every page — organisation name, contact details and the copyright line.</p></div></div>
+    <form id="siteSettingsForm">
+      <div class="field"><label>Organisation / site name</label><input type="text" name="orgName" value="${esc(s.orgName)}" placeholder="Vedanta Security Exam Portal"></div>
+      <div class="field-row">
+        <div class="field"><label>Support email</label><input type="email" name="supportEmail" value="${esc(s.supportEmail)}" placeholder="support@example.com"></div>
+        <div class="field"><label>Support phone</label><input type="tel" name="supportPhone" value="${esc(s.supportPhone)}" placeholder="+91 98765 43210"></div>
+      </div>
+      <div class="field"><label>Address / location <span style="font-weight:500;color:var(--muted-2);">(optional)</span></label><input type="text" name="address" value="${esc(s.address)}" placeholder="Site office, City"></div>
+      <div class="field"><label>Copyright line <span style="font-weight:500;color:var(--muted-2);">(optional — leave blank to auto-generate)</span></label><input type="text" name="copyrightText" value="${esc(s.copyrightText)}" placeholder="© ${year} ${esc(s.orgName||'Vedanta Security Exam Portal')}. All rights reserved."></div>
+      <button class="btn btn-primary" type="submit">Save footer settings</button>
+    </form>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="panel-head"><div><h2>Preview</h2><p>This is exactly what visitors will see at the bottom of the page.</p></div></div>
+    <div id="settingsFooterPreview" style="border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;">${footerHtml()}</div>
+  </div>
+  <details style="margin-top:16px;color:var(--muted);font-size:12.5px;">
+    <summary style="cursor:pointer;color:var(--muted);">For your developer — sync these settings across every device (optional)</summary>
+    <p style="line-height:1.6;margin:10px 0;">Without this, footer changes are saved on this browser only. To make them sync everywhere instantly, ask your developer to run this once in the Supabase SQL editor:</p>
+    <pre style="background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px;overflow-x:auto;white-space:pre;font-family:var(--font-mono);font-size:11.5px;line-height:1.6;">create table if not exists public.settings (
+  id text primary key,
+  org_name text, support_email text, support_phone text,
+  address text, copyright_text text, updated_at timestamptz default now()
+);
+alter table public.settings enable row level security;
+create policy "settings read" on public.settings for select using (true);
+create policy "settings write" on public.settings for insert with check (true);
+create policy "settings modify" on public.settings for update using (true);</pre>
+  </details>`;
+}
+function bindAdminSiteSettings(){
+  const f = document.getElementById('siteSettingsForm');
+  if(!f) return;
+  f.addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(f);
+    const updated = {
+      id:'site',
+      orgName: fd.get('orgName').trim(),
+      supportEmail: fd.get('supportEmail').trim(),
+      supportPhone: fd.get('supportPhone').trim(),
+      address: fd.get('address').trim(),
+      copyrightText: fd.get('copyrightText').trim()
+    };
+    Object.assign(SITE_SETTINGS, updated);
+    try{ localStorage.setItem(SITE_SETTINGS_LS_KEY, JSON.stringify(SITE_SETTINGS)); }catch(err){ /* ignore */ }
+    withBusy(f, async ()=>{
+      try{
+        const { error } = await sb.from('settings').upsert(toSnake(updated)).select('*');
+        if(error) throw error;
+        showConfirmToast('Footer settings saved');
+      }catch(err){
+        console.error(err);
+        showConfirmToast('Saved on this device');
+      }
+      patch({});
+    });
+  });
 }
 
 /* --- Admin: Months & Exams --- */
@@ -1296,6 +1765,7 @@ function bindAdminMonths(){
       DB.months.push(month);
       S.newMonthSel = null; S.newYearSel = null;
       patch({});
+      showConfirmToast('Month added');
     });
   });
   document.querySelectorAll('[data-lockmonth]').forEach(el=>el.addEventListener('click',()=>{
@@ -1308,6 +1778,7 @@ function bindAdminMonths(){
       if(!ok){ console.error(error); alert('Could not update the lock status.\n\n'+(error&&error.message?error.message:'Please try again.')); el.disabled=false; return; }
       m.locked = newVal;
       patch({});
+      showConfirmToast(newVal ? 'Month locked' : 'Month unlocked');
     });
   }));
   document.querySelectorAll('[data-openmonth]').forEach(el=>el.addEventListener('click',()=>goPush({adminMonthId:el.getAttribute('data-openmonth')})));
@@ -1324,6 +1795,7 @@ function bindAdminMonths(){
       DB.attempts = DB.attempts.filter(a=>!examIds.includes(a.examId));
       DB.months = DB.months.filter(m=>m.id!==id);
       patch({});
+      showConfirmToast('Month deleted', 'danger');
     });
   }));
 }
@@ -1331,7 +1803,6 @@ function adminMonthDetail(monthId){
   const m = monthById(monthId);
   const exams = examsForMonth(monthId);
   return `
-  <div class="crumb"><a data-backmonths="1">Months</a> <span>/</span> <span>${esc(m.label)}</span></div>
   <div class="card">
     <div class="panel-head"><div><h2>${esc(m.label)}</h2><p>Exam sections for this month.</p></div></div>
     <form id="addExamForm" style="margin-bottom:18px;">
@@ -1371,7 +1842,6 @@ function adminMonthDetail(monthId){
   </div>`;
 }
 function bindAdminMonthDetail(){
-  document.querySelector('[data-backmonths]').addEventListener('click',goBack);
   const f = document.getElementById('addExamForm');
   const nameEnInput = document.getElementById('nameEnInput');
   const nameHiInput = document.getElementById('nameHiInput');
@@ -1398,6 +1868,7 @@ function bindAdminMonthDetail(){
       if(!ok) throw error;
       DB.exams.push(exam);
       patch({});
+      showConfirmToast('Exam section added');
     });
   });
   document.querySelectorAll('[data-openexam]').forEach(el=>el.addEventListener('click',()=>goPush({adminTab:'exam', adminExamId:el.getAttribute('data-openexam')})));
@@ -1411,6 +1882,7 @@ function bindAdminMonthDetail(){
       DB.questions = DB.questions.filter(q=>q.examId!==id);
       DB.attempts = DB.attempts.filter(a=>a.examId!==id);
       patch({});
+      showConfirmToast('Exam section deleted', 'danger');
     });
   }));
 }
@@ -1422,13 +1894,11 @@ function adminExamQuestions(){
   const ex = examById(S.adminExamId);
   if(!ex) return emptyState('warn','Exam not found','');
   if(!ex.qLang) ex.qLang = 'both';
-  const m = monthById(ex.monthId);
   const qs = questionsForExam(ex.id);
   const qLang = ex.qLang;
   const qLangHint = qLang==='hi'?'Fill in every question in Hindi only.':qLang==='en'?'Fill in every question in English only.':'Fill in both Hindi and English text for every question.';
   return `
   <div class="crumb-row">
-    <div class="crumb" style="margin-bottom:0;"><a data-backtomonth="${m.id}">${esc(m.label)}</a> <span>/</span> <span>${esc(ex.nameEn)}</span></div>
     <div class="qlang-select" title="Question language">
       <button type="button" class="${qLang==='hi'?'active':''}" data-qlang="hi">हिन्दी</button>
       <button type="button" class="${qLang==='en'?'active':''}" data-qlang="en">English</button>
@@ -1507,7 +1977,6 @@ function renderOptBuilders(qLang){
 }
 function bindAdminExamQuestions(){
   const ex = examById(S.adminExamId);
-  document.querySelector('[data-backtomonth]').addEventListener('click',()=>{ resetQB(); goBack(); });
   document.querySelectorAll('[data-qlang]').forEach(el=>el.addEventListener('click',()=>{
     const val = el.getAttribute('data-qlang');
     if(ex && ex.qLang!==val){
@@ -1525,6 +1994,7 @@ function bindAdminExamQuestions(){
       if(QB_STATE.editId===delId) resetQB();
       DB.questions = DB.questions.filter(q=>q.id!==delId);
       patch({});
+      showConfirmToast('Question deleted', 'danger');
     });
   }));
   document.querySelectorAll('[data-editq]').forEach(el=>el.addEventListener('click',()=>{
@@ -1611,6 +2081,7 @@ function bindAdminExamQuestions(){
         if(q) Object.assign(q, updated);
         resetQB();
         patch({});
+        showConfirmToast('Question updated');
       });
     } else {
       const order = questionsForExam(S.adminExamId).length;
@@ -1629,6 +2100,7 @@ function bindAdminExamQuestions(){
         DB.questions.push(question);
         resetQB();
         patch({});
+        showConfirmToast('Question added as draft');
       });
     }
   }
@@ -1642,6 +2114,7 @@ function bindAdminExamQuestions(){
       if(!ok){ console.error(error); alert('Publish failed.\n\n'+(error&&error.message?error.message:'Please try again.')); publishAllBtn.disabled=false; publishAllBtn.textContent='✓ Done — publish all drafts'; return; }
       drafts.forEach(q=>{ q.published = true; });
       patch({});
+      showConfirmToast(`${drafts.length} draft question${drafts.length===1?'':'s'} published`);
     });
   });
 }
@@ -1702,11 +2175,10 @@ function adminResults(){
     ${allAttempts.length===0?emptyState('chart','No attempts for this exam yet','Results will appear here once guards attempt it.'):`
     <div class="search-box"><input type="text" id="resultsSearchInput" placeholder="Search by name or gate pass…" value="${esc(S.resultsSearchQuery||'')}"></div>
     ${attempts.length===0?emptyState('search','No guard found','Check the spelling and try again.'):
-    `<div class="table-wrap"><table><thead><tr><th>S.No.</th><th>Name</th><th>Gate pass</th><th>Post</th><th>Date</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>
+    `<div class="table-wrap"><table><thead><tr><th>S.No.</th><th>Name</th><th>Gate pass</th><th>Post</th><th>Date</th><th>Score</th><th></th></tr></thead><tbody>
       ${attempts.map((a,idx)=>{
         const g = findGuard(a.guardMobile); const dt = fmtDateTime(a.submittedAt);
         return `<tr><td class="mono">${idx+1}</td><td><span class="name-link" data-profile="${esc(a.guardMobile)}">${esc(g?g.name:a.guardMobile)}</span></td><td class="mono">${esc(g?g.gatePass:'-')}</td><td>${esc(g?g.post:'-')}</td><td class="mono">${dt.date} ${dt.time}</td><td class="mono">${a.score}/${a.total}</td>
-        <td>${a.approvedRetake?'<span class="badge badge-open">Re-attempt open</span>':'<span class="badge badge-locked">Locked</span>'}</td>
         <td style="display:flex;gap:6px;"><button class="btn btn-sm" data-viewatt="${a.id}">View</button><button class="btn btn-sm btn-danger btn-icon" data-delatt="${a.id}" title="Delete result">${icon('trash',14)}</button></td></tr>`;
       }).join('')}
     </tbody></table></div>`}`}
@@ -1726,10 +2198,11 @@ function bindAdminResults(){
     if(!confirm('Permanently delete this result for this security person? This action cannot be undone.')) return;
     const delId = el.getAttribute('data-delatt');
     el.disabled = true;
-    dbWrite(sb.from('attempts').delete().eq('id', delId)).then(({ok,error})=>{
+    dbWrite(sb.from('attempts').delete().eq('id', delId), null, 'attempts').then(({ok,error})=>{
       if(!ok){ console.error(error); alert('Delete failed.\n\n'+(error&&error.message?error.message:'Please try again.')); el.disabled=false; return; }
       DB.attempts = DB.attempts.filter(a=>a.id!==delId);
       patch({});
+      showConfirmToast('Result deleted', 'danger');
     });
   }));
   const exp = document.getElementById('exportBtn');
@@ -1840,7 +2313,7 @@ function adminMasterDataGuardSearch(){
   </div>`;
 }
 function adminMasterDataDetail(view){
-  let title, showRank=false, rows;
+  let title, showRank=false, showMissed=false, rows, examsToCheck=[];
   if(view==='registered'){
     title = 'Registered security person';
     showRank = true;
@@ -1848,21 +2321,22 @@ function adminMasterDataDetail(view){
   } else {
     const { attend, notAttend } = masterDataAttendance();
     title = view==='attend' ? 'Attend' : 'Not Attend';
-    rows = (view==='attend'?attend:notAttend).map(g=>({g}));
+    showMissed = view==='notattend';
+    if(showMissed) examsToCheck = masterDataExamsToCheck().examsToCheck;
+    rows = (view==='attend'?attend:notAttend).map(g=>({g, missed: showMissed?missedExamTypesFor(g.mobile, examsToCheck):[]}));
   }
   const q = (S.mdSearchQuery||'').trim().toLowerCase();
   const filteredRows = q ? rows.filter(r=> r.g.name.toLowerCase().includes(q) || r.g.gatePass.toLowerCase().includes(q) || r.g.mobile.includes(q)) : rows;
   return `
-  <div class="crumb"><a data-mdback="1">Master Data</a> <span>/</span> <span>${esc(title)}</span></div>
   <div class="card">
     <div class="panel-head"><div><h2>${esc(title)} (${rows.length})</h2></div></div>
     <div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary btn-sm" id="mdExportBtn">⬇ Export to Excel</button></div>
     <div class="search-box"><input type="text" id="mdSearchInput" placeholder="Search by name, gate pass or mobile…" value="${esc(S.mdSearchQuery||'')}"></div>
     ${filteredRows.length===0?emptyState('search','No security person found','Check the spelling and try again.'):
-    `<div class="table-wrap"><table><thead><tr>${showRank?'<th>Rank</th>':'<th>S.No.</th>'}<th>Name</th><th>Gate pass</th><th>Mobile</th><th>Post</th>${showRank?'<th>Marks</th><th>Percentage</th>':''}${view==='registered'?'<th></th>':''}</tr></thead><tbody>
+    `<div class="table-wrap"><table><thead><tr>${showRank?'<th>Rank</th>':'<th>S.No.</th>'}<th>Name</th><th>Gate pass</th><th>Mobile</th><th>Post</th>${showRank?'<th>Marks</th><th>Percentage</th>':''}${showMissed?'<th>Missed Exams</th>':''}${view==='registered'?'<th></th>':''}</tr></thead><tbody>
     ${filteredRows.map((r,idx)=>{
       const g=r.g;
-      return `<tr><td class="mono">${showRank?r.rank:idx+1}</td><td><span class="name-link" data-profile="${esc(g.mobile)}">${esc(g.name)}</span></td><td class="mono">${esc(g.gatePass)}</td><td class="mono">${esc(g.mobile)}</td><td>${esc(g.post)}</td>${showRank?`<td class="mono">${r.achievedMarks}/${r.totalMarks}</td><td class="mono">${r.pct.toFixed(1)}%</td>`:''}${view==='registered'?`<td><button class="icon-del-btn" data-delguard="${esc(g.mobile)}" title="Remove security person">${icon('trash',14)}</button></td>`:''}</tr>`;
+      return `<tr><td class="mono">${showRank?r.rank:idx+1}</td><td><span class="name-link" data-profile="${esc(g.mobile)}">${esc(g.name)}</span></td><td class="mono">${esc(g.gatePass)}</td><td class="mono">${esc(g.mobile)}</td><td>${esc(g.post)}</td>${showRank?`<td class="mono">${r.achievedMarks}/${r.totalMarks}</td><td class="mono">${r.pct.toFixed(1)}%</td>`:''}${showMissed?`<td>${r.missed.length?esc(r.missed.join(', ')):'-'}</td>`:''}${view==='registered'?`<td><button class="icon-del-btn" data-delguard="${esc(g.mobile)}" title="Remove security person">${icon('trash',14)}</button></td>`:''}</tr>`;
     }).join('')}
     </tbody></table></div>`}
   </div>`;
@@ -1888,8 +2362,6 @@ function bindAdminMasterData(){
   document.querySelectorAll('[data-profile]').forEach(el=>el.addEventListener('click',()=>goPush({adminTab:'guardprofile', profileMobile:el.getAttribute('data-profile')})));
 }
 function bindAdminMasterDataDetail(){
-  const back = document.querySelector('[data-mdback]');
-  if(back) back.addEventListener('click', goBack);
   const inp = document.getElementById('mdSearchInput');
   if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
     inp.addEventListener('input',()=>patch({mdSearchQuery:inp.value})); }
@@ -1901,10 +2373,11 @@ function bindAdminMasterDataDetail(){
     const g = findGuard(mobile);
     if(!confirm(`Permanently remove ${g?g.name:mobile} (${mobile}) from registered security persons?\n\nTheir past exam results will stay in Results, but they will need to register again (name, gate pass, new PIN) before they can log in or take any future exam.`)) return;
     el.disabled = true;
-    dbWrite(sb.from('guards').delete().eq('mobile', mobile), 'mobile').then(({ok,error})=>{
+    dbWrite(sb.from('guards').delete().eq('mobile', mobile), 'mobile', 'guards').then(({ok,error})=>{
       if(!ok){ console.error(error); alert('Delete failed.\n\n'+(error&&error.message?error.message:'Please try again.')); el.disabled=false; return; }
       DB.guards = DB.guards.filter(x=>x.mobile!==mobile);
       patch({});
+      showConfirmToast('Security person removed', 'danger');
     });
   }));
 }
@@ -1918,8 +2391,14 @@ function exportMasterDataExcel(view){
   } else {
     const { attend, notAttend } = masterDataAttendance();
     const list = view==='attend' ? attend : notAttend;
-    header = ['S.No.','Name','Gate Pass Number','Mobile','Post'];
-    dataRows = list.map((g,i)=>[i+1, g.name, g.gatePass, g.mobile, g.post]);
+    if(view==='notattend'){
+      const examsToCheck = masterDataExamsToCheck().examsToCheck;
+      header = ['S.No.','Name','Gate Pass Number','Mobile','Post','Missed Exams'];
+      dataRows = list.map((g,i)=>[i+1, g.name, g.gatePass, g.mobile, g.post, missedExamTypesFor(g.mobile, examsToCheck).join(', ') || '-']);
+    } else {
+      header = ['S.No.','Name','Gate Pass Number','Mobile','Post'];
+      dataRows = list.map((g,i)=>[i+1, g.name, g.gatePass, g.mobile, g.post]);
+    }
     title = view==='attend' ? 'Attend' : 'Not Attend';
   }
   if(dataRows.length===0){ alert('There is no data to export.'); return; }
@@ -1954,7 +2433,6 @@ function adminGuardProfile(){
   const missedByMonth = months.map(m=>({ month:m, exams: examsForMonth(m.id).filter(ex=>!attemptedExamIds.has(ex.id)) })).filter(x=>x.exams.length>0);
   const attsChrono = atts.slice().sort((a,b)=>a.submittedAt-b.submittedAt);
   return `
-  <div class="crumb"><a data-backsearch="1">Back</a> <span>/</span> <span>${esc(g.name)}</span></div>
   <div class="card" style="margin-bottom:16px;">
     <div class="panel-head"><div><h2>${esc(g.name)}</h2><p class="mono">${esc(g.gatePass)} · ${esc(g.post)} · ${esc(g.mobile)}</p></div>
       <button class="btn btn-ghost btn-sm" id="resetPinBtn" type="button">${icon('eye',14)} Reset PIN</button>
@@ -1988,26 +2466,35 @@ function adminGuardProfile(){
     missedByMonth.map(x=>`
       <div style="margin-bottom:14px;">
         <div style="font-weight:700;font-size:13.5px;margin-bottom:6px;">${esc(x.month.label)}</div>
-        <div class="opts-preview">${x.exams.map(ex=>`<span class="chip" style="border-color:var(--red);color:var(--red);">${esc(ex.nameEn)}</span>`).join('')}</div>
+        <div class="opts-preview">${x.exams.map(ex=>`<span class="chip" style="border-color:var(--red);color:var(--red);">${esc(examLabel(ex))}</span>`).join('')}</div>
       </div>
     `).join('')}
   </div>
   <div class="card">
     <div class="panel-head"><div><h2>Exam history (${atts.length})</h2></div></div>
     ${atts.length===0?emptyState('doc','No exam attempted yet','',''):
-    `<div class="table-wrap"><table><thead><tr><th>S.No.</th><th>Exam</th><th>Type</th><th>Date</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>
+    `<div class="table-wrap"><table><thead><tr><th>S.No.</th><th>Exam</th><th>Type</th><th>Date</th><th>Score</th><th></th></tr></thead><tbody>
     ${attsChrono.map((a,idx)=>{
       const ex = examById(a.examId); const dt = fmtDateTime(a.submittedAt);
-      return `<tr><td class="mono">${idx+1}</td><td>${esc(ex.nameEn)}</td><td>${ex.examType?esc(ex.examType):'-'}</td><td class="mono">${dt.date} ${dt.time}</td><td class="mono">${a.score}/${a.total}</td>
-      <td>${a.approvedRetake?'<span class="badge badge-open">Re-attempt open</span>':'<span class="badge badge-locked">Locked</span>'}</td>
-      <td><button class="btn btn-sm" data-viewatt2="${a.id}">View</button></td></tr>`;
+      return `<tr><td class="mono">${idx+1}</td><td>${esc((ex&&((ex.nameEn||'').trim()||(ex.nameHi||'').trim()))||'-')}</td><td>${ex&&ex.examType?esc(ex.examType):'-'}</td><td class="mono">${dt.date} ${dt.time}</td><td class="mono">${a.score}/${a.total}</td>
+      <td style="display:flex;gap:6px;"><button class="btn btn-sm" data-viewatt2="${a.id}">View</button><button class="btn btn-sm btn-danger btn-icon" data-delatt2="${a.id}" title="Delete result">${icon('trash',14)}</button></td></tr>`;
     }).join('')}
     </tbody></table></div>`}
   </div>`;
 }
 function bindAdminGuardProfile(){
-  document.querySelector('[data-backsearch]').addEventListener('click',goBack);
   document.querySelectorAll('[data-viewatt2]').forEach(el=>el.addEventListener('click',()=>go('admin-review',{attemptId:el.getAttribute('data-viewatt2'), adminTab:'guardprofile', profileMobile:S.profileMobile})));
+  document.querySelectorAll('[data-delatt2]').forEach(el=>el.addEventListener('click',()=>{
+    if(!confirm('Permanently delete this result for this security person? This action cannot be undone.')) return;
+    const delId = el.getAttribute('data-delatt2');
+    el.disabled = true;
+    dbWrite(sb.from('attempts').delete().eq('id', delId), null, 'attempts').then(({ok,error})=>{
+      if(!ok){ console.error(error); alert('Delete failed.\n\n'+(error&&error.message?error.message:'Please try again.')); el.disabled=false; return; }
+      DB.attempts = DB.attempts.filter(a=>a.id!==delId);
+      patch({});
+      showConfirmToast('Result deleted', 'danger');
+    });
+  }));
   const rpb = document.getElementById('resetPinBtn');
   if(rpb) rpb.addEventListener('click',()=>patch({showResetPin:!S.showResetPin, resetPinError:null, resetPinDone:false}));
   const cancelBtn = document.getElementById('cancelResetPin');
@@ -2056,7 +2543,7 @@ function bootScreen(msg, isError){
   </div>`;
 }
 document.getElementById('app').innerHTML = bootScreen('Loading data…');
-loadAllData().then(()=>{
+loadAllData().then(loadSiteSettings).then(()=>{
   render();
   startLiveSync();
 }).catch(err=>{
